@@ -37,7 +37,7 @@ Too loud? Too quiet? Preamp handles it fast.
 
 **Render / Export** — Apply your EQ and export the result.
 AAC (up to 320 kbps) or WAV 24-bit, via MediaCodec.
-No FFmpegKit — smaller APK, no headaches for FOSS stores.
+No FFmpegKit — smaller APK, fine for FOSS stores.
 
 **dBFS Meter** *(coming soon)* — Real-time digital output level meter.
 Shows the actual signal level hitting your DAC.
@@ -73,18 +73,11 @@ No FFmpegKit. No Play Services. Apache-friendly stack throughout.
 ---
 
 ## Build
-
-Standard Android project. Clone and open in Android Studio, or:
-
 ```bash
-./gradlew assembleRelease
+git clone https://github.com/codestudio71/Code-Ai.git
 ```
-
-On Windows (PowerShell or CMD):
-
-```bat
-gradlew.bat assembleRelease
-```
+Open in Android Studio. Standard Gradle project, no special setup needed.
+Requirements: Android Studio · JDK 17 · min SDK 24
 
 ---
 
