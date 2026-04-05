@@ -1,0 +1,125 @@
+<resources>
+    <string name="app_name">Spoticious</string>
+
+    <!-- MainScreen / Navigation -->
+    <string name="search">Search</string>
+    <string name="search_placeholder">Type title or name…</string>
+    <string name="close">Close</string>
+    <string name="extra">EXTRA</string>
+    <string name="tracks">Tracks</string>
+    <string name="folders">Folders</string>
+    <string name="eq">EQ</string>
+    <string name="render">Render</string>
+
+    <!-- Sort menu -->
+    <string name="sort_by">Sort by:</string>
+    <string name="sort_title_asc">Title (A→Z)</string>
+    <string name="sort_title_desc">Title (Z→A)</string>
+    <string name="sort_duration_asc">Duration (ascending)</string>
+    <string name="sort_duration_desc">Duration (descending)</string>
+    <string name="sort_date_asc">Date created (oldest)</string>
+    <string name="sort_date_desc">Date created (newest)</string>
+
+    <!-- Common -->
+    <string name="back">Back</string>
+
+    <!-- ExtraScreen -->
+    <string name="extra_title">Extra</string>
+    <string name="wrapped">Wrapped</string>
+    <string name="record_preview">Record Preview</string>
+    <string name="coming_soon">Coming soon</string>
+    <string name="playlist">Playlist</string>
+    <string name="playlist_queue">Playback queue</string>
+    <string name="about_app">About app</string>
+    <string name="support_project">Support project</string>
+    <string name="contact">Contact</string>
+    <string name="github">GitHub</string>
+
+    <!-- PlaylistScreen -->
+    <string name="new_playlist">New Playlist</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="select_track">Select track</string>
+    <string name="playlist_empty_hint">List is empty. Tap + to add tracks.</string>
+    <string name="your_playlists">Your Playlists</string>
+    <string name="no_playlists">No playlists created</string>
+    <string name="add_new_list">Add new list</string>
+    <string name="tracks_count">%d tracks</string>
+    <string name="add_tracks">Add tracks</string>
+    <string name="add_playlist">Add playlist</string>
+    <string name="playlist_track_options">Track options on playlist</string>
+    <string name="remove_from_playlist">Remove from playlist</string>
+    <string name="move_track_up">Move up</string>
+    <string name="move_track_down">Move down</string>
+    <string name="playlist_reorder_drag">Drag to reorder</string>
+    <string name="playlist_row_options_title">Playlist options</string>
+    <string name="rename_playlist">Rename</string>
+    <string name="delete_playlist">Delete playlist</string>
+    <string name="delete_playlist_confirm">Delete this playlist? Tracks will be removed from this list only (files on device stay).</string>
+
+    <!-- Permissions -->
+    <string name="share_access">Share access</string>
+    <string name="music_access_tracks">Music access is required\nto browse tracks</string>
+    <string name="music_access_folders">Music access is required\nto browse files on device</string>
+    <string name="try_again">Try again</string>
+    <string name="refresh">Refresh</string>
+    <string name="no_audio_files">No audio files on device</string>
+
+    <!-- TracksScreen -->
+    <string name="pause">Pause</string>
+    <string name="play">Play</string>
+    <string name="track_options_title">Track options</string>
+    <string name="delete_track_from_device">Delete from phone</string>
+    <string name="rename_track">Rename</string>
+    <string name="rename_track_dialog_title">New file name</string>
+    <string name="rename_track_hint">Library display name (extension will be kept if omitted)</string>
+    <string name="delete_track_confirm">Delete this file from the phone? This cannot be undone.</string>
+    <string name="track_action_done">Done</string>
+    <string name="track_action_failed">Something went wrong</string>
+
+    <!-- Folders -->
+    <string name="tracks_in_folder">%d tracks</string>
+
+    <!-- FullPlayerScreen -->
+    <string name="shuffle">Shuffle</string>
+    <string name="previous">Previous</string>
+    <string name="next">Next</string>
+    <string name="repeat">Repeat</string>
+    <string name="track_default">Track</string>
+
+    <!-- RenderScreen -->
+    <string name="export_with_eq">Export with EQ</string>
+    <string name="current_track_with_eq">Current track with EQ settings</string>
+    <string name="select_track_in_tracks">Select track in Tracks tab</string>
+    <string name="export_as_aac">Export as AAC</string>
+    <string name="export_as_wav">Export as WAV</string>
+    <string name="file_name">File name</string>
+    <string name="name_label">Name</string>
+    <string name="sample_rate">Sample rate:</string>
+    <string name="from_original">from original</string>
+    <string name="hz_44_1">44.1 kHz</string>
+    <string name="hz_48">48 kHz</string>
+    <string name="hz_44100">44 100 Hz</string>
+    <string name="hz_48000">48 000 Hz</string>
+    <string name="format_aac">Format: AAC 320 kbps</string>
+    <string name="format_wav">Format: WAV 24-bit</string>
+    <string name="render_button">Render</string>
+    <string name="rendering">Rendering…</string>
+    <string name="saved">Saved!</string>
+    <string name="music_rendered">Music/Rendered</string>
+    <string name="export_another">Export another</string>
+    <string name="export_error">Export error</string>
+
+    <!-- Sleep Timer -->
+    <string name="sleep_timer">Sleep timer</string>
+    <string name="custom_minutes">Custom (minutes)</string>
+    <string name="disable">Disable</string>
+    <string name="min_remaining">%d min</string>
+    <string name="min_short">%dm</string>
+
+    <!-- EqScreen -->
+    <string name="eq_on">ON</string>
+    <string name="eq_off">OFF</string>
+    <string name="eq_pre">Pre</string>
+    <string name="eq_reset">RESET ALL</string>
+</resources>
