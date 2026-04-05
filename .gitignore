@@ -13,3 +13,9 @@ local.properties
 
 # Wynik Build → Generate Signed Bundle / APK (APK wrzucaj w GitHub Releases)
 app/release/
+
+# Notatki / plan lokalnie — nie w publicznym repo
+AGENT_TASKS.md
+spoticious.md
+UPDATE.md
+ROADMAP.md
