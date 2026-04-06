@@ -67,14 +67,14 @@ No FFmpegKit. No Play Services. Apache-friendly stack throughout.
 
 > **Minimum: Android 7.0 (API 24)**
 
-- **GitHub Releases** — grab the APK from [Releases](https://github.com/codestudio71/Code-Ai/releases)
+- **GitHub Releases** — grab the APK from [Releases](https://github.com/codestudio71/Spoticious/releases)
 - **F-Droid** — not listed yet, but the stack is compatible. Planned.
 
 ---
 
 ## Build
 ```bash
-git clone https://github.com/codestudio71/Code-Ai.git
+git clone https://github.com/codestudio71/Spoticious.git
 ```
 Open in Android Studio. Standard Gradle project, no special setup needed.
 Requirements: Android Studio · JDK 17 · min SDK 24
@@ -86,7 +86,7 @@ Requirements: Android Studio · JDK 17 · min SDK 24
 - dBFS meter is not implemented yet — coming in a future release
 - Export on some devices may behave differently depending on MediaCodec implementation
 
-Found a bug? Test it, then [open an issue](https://github.com/codestudio71/Code-Ai/issues) and let me know.
+Found a bug? Test it, then [open an issue](https://github.com/codestudio71/Spoticious/issues) and let me know.
 
 ---
 
@@ -102,6 +102,8 @@ If you have too much money and spend it on stupid stuff — consider donating in
 I'm an indie dev, funding everything out of my own pocket. Staying FOSS, no paywalls, no bullshit.
 
 [Donate via PayPal](https://www.paypal.com/donate/?hosted_button_id=H9DVM6NZ8TD6A)
+
+[Bitcoin Lightning](lightning:devteam@cake.cash) — `devteam@cake.cash`
 
 No money? Spread the word. Share it with friends, forums, communities.
 That kind of support means just as much.
