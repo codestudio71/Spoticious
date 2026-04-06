@@ -103,7 +103,7 @@ I'm an indie dev, funding everything out of my own pocket. Staying FOSS, no payw
 
 [Donate via PayPal](https://www.paypal.com/donate/?hosted_button_id=H9DVM6NZ8TD6A)
 
-[Bitcoin Lightning](lightning:devteam@cake.cash) — `devteam@cake.cash`
+⚡ Bitcoin Lightning: `devteam@cake.cash`
 
 No money? Spread the word. Share it with friends, forums, communities.
 That kind of support means just as much.
