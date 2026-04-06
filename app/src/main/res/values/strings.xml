@@ -2,118 +2,136 @@
     <string name="app_name">Spoticious</string>
 
     <!-- MainScreen / Navigation -->
-    <string name="search">Szukaj</string>
-    <string name="search_placeholder">Wpisz tytuł lub nazwę…</string>
-    <string name="close">Zamknij</string>
+    <string name="search">Search</string>
+    <string name="search_placeholder">Type title or name…</string>
+    <string name="close">Close</string>
     <string name="extra">EXTRA</string>
-    <string name="tracks">Utwory</string>
-    <string name="folders">Foldery</string>
+    <string name="tracks">Tracks</string>
+    <string name="folders">Folders</string>
     <string name="eq">EQ</string>
     <string name="render">Render</string>
 
     <!-- Sort menu -->
-    <string name="sort_by">Sortuj po:</string>
-    <string name="sort_title_asc">Tytuł (A→Z)</string>
-    <string name="sort_title_desc">Tytuł (Z→A)</string>
-    <string name="sort_duration_asc">Czas trwania (rosnąco)</string>
-    <string name="sort_duration_desc">Czas trwania (malejąco)</string>
-    <string name="sort_date_asc">Data utworzenia (najstarsze)</string>
-    <string name="sort_date_desc">Data utworzenia (najnowsze)</string>
+    <string name="sort_by">Sort by:</string>
+    <string name="sort_title_asc">Title (A→Z)</string>
+    <string name="sort_title_desc">Title (Z→A)</string>
+    <string name="sort_duration_asc">Duration (ascending)</string>
+    <string name="sort_duration_desc">Duration (descending)</string>
+    <string name="sort_date_asc">Date created (oldest)</string>
+    <string name="sort_date_desc">Date created (newest)</string>
 
     <!-- Common -->
-    <string name="back">Wstecz</string>
+    <string name="back">Back</string>
 
     <!-- ExtraScreen -->
     <string name="extra_title">Extra</string>
     <string name="wrapped">Wrapped</string>
     <string name="record_preview">Record Preview</string>
-    <string name="coming_soon">Wkrótce</string>
-    <string name="playlist">Playlista</string>
-    <string name="playlist_queue">Kolejka odtwarzania</string>
-    <string name="about_app">O aplikacji</string>
-    <string name="support_project">Wesprzyj projekt</string>
-    <string name="contact">Kontakt</string>
+    <string name="coming_soon">Coming soon</string>
+    <string name="playlist">Playlist</string>
+    <string name="playlist_queue">Playback queue</string>
+    <string name="about_app">About app</string>
+    <string name="support_project">Support project</string>
+    <string name="contact">Contact</string>
     <string name="github">GitHub</string>
+    <string name="app_version_label">version %1$s</string>
 
     <!-- PlaylistScreen -->
-    <string name="new_playlist">Nowa Playlista</string>
-    <string name="save">Zapisz</string>
-    <string name="cancel">Anuluj</string>
-    <string name="select_track">Wybierz utwór</string>
-    <string name="playlist_empty_hint">Lista jest pusta. Kliknij + aby dodać utwory.</string>
-    <string name="your_playlists">Twoje Playlisty</string>
-    <string name="no_playlists">Brak utworzonych playlist</string>
-    <string name="add_new_list">Dodaj nową listę</string>
-    <string name="tracks_count">%d utworów</string>
-    <string name="add_tracks">Dodaj utwory</string>
-    <string name="add_playlist">Dodaj playlistę</string>
-    <string name="playlist_track_options">Opcje utworu na playliście</string>
-    <string name="remove_from_playlist">Usuń z playlisty</string>
-    <string name="move_track_up">Przesuń wyżej</string>
-    <string name="move_track_down">Przesuń niżej</string>
-    <string name="playlist_reorder_drag">Przeciągnij, by zmienić kolejność</string>
-    <string name="playlist_row_options_title">Opcje playlisty</string>
-    <string name="rename_playlist">Zmień nazwę</string>
-    <string name="delete_playlist">Usuń playlistę</string>
-    <string name="delete_playlist_confirm">Na pewno usunąć tę playlistę? Utwory na liście zostaną usunięte z tej kolekcji (pliki na telefonie zostają).</string>
+    <string name="new_playlist">New Playlist</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="select_track">Select track</string>
+    <string name="playlist_empty_hint">List is empty. Tap + to add tracks.</string>
+    <string name="your_playlists">Your Playlists</string>
+    <string name="no_playlists">No playlists created</string>
+    <string name="add_new_list">Add new list</string>
+    <string name="tracks_count">%d tracks</string>
+    <string name="add_tracks">Add tracks</string>
+    <string name="add_playlist">Add playlist</string>
+    <string name="playlist_track_options">Track options on playlist</string>
+    <string name="remove_from_playlist">Remove from playlist</string>
+    <string name="move_track_up">Move up</string>
+    <string name="move_track_down">Move down</string>
+    <string name="playlist_reorder_drag">Drag to reorder</string>
+    <string name="playlist_row_options_title">Playlist options</string>
+    <string name="rename_playlist">Rename</string>
+    <string name="delete_playlist">Delete playlist</string>
+    <string name="delete_playlist_confirm">Delete this playlist? Tracks will be removed from this list only (files on device stay).</string>
 
     <!-- Permissions -->
-    <string name="share_access">Udostępnij dostęp</string>
-    <string name="music_access_tracks">Dostęp do muzyki jest potrzebny,\naby przeglądać utwory</string>
-    <string name="music_access_folders">Dostęp do muzyki jest potrzebny,\naby przeglądać pliki na urządzeniu</string>
-    <string name="try_again">Spróbuj ponownie</string>
-    <string name="refresh">Odśwież</string>
-    <string name="no_audio_files">Brak plików audio na urządzeniu</string>
+    <string name="share_access">Share access</string>
+    <string name="music_access_tracks">Music access is required\nto browse tracks</string>
+    <string name="music_access_folders">Music access is required\nto browse files on device</string>
+    <string name="try_again">Try again</string>
+    <string name="refresh">Refresh</string>
+    <string name="no_audio_files">No audio files on device</string>
 
     <!-- TracksScreen -->
-    <string name="pause">Pauza</string>
-    <string name="play">Odtwarzaj</string>
-    <string name="track_options_title">Opcje utworu</string>
-    <string name="delete_track_from_device">Usuń z telefonu</string>
-    <string name="rename_track">Zmień nazwę</string>
-    <string name="rename_track_dialog_title">Nowa nazwa pliku</string>
-    <string name="rename_track_hint">Nazwa widoczna w bibliotece (rozszerzenie zostanie zachowane)</string>
-    <string name="delete_track_confirm">Usunąć ten plik z telefonu? Tej operacji nie można cofnąć.</string>
-    <string name="track_action_done">Gotowe</string>
-    <string name="track_action_failed">Operacja nie powiodła się</string>
+    <string name="pause">Pause</string>
+    <string name="play">Play</string>
+    <string name="track_options_title">Track options</string>
+    <string name="delete_track_from_device">Delete from phone</string>
+    <string name="rename_track">Rename</string>
+    <string name="rename_track_dialog_title">New file name</string>
+    <string name="rename_track_hint">Library display name (extension will be kept if omitted)</string>
+    <string name="delete_track_confirm">Delete this file from the phone? This cannot be undone.</string>
+    <string name="track_action_done">Done</string>
+    <string name="track_action_failed">Something went wrong</string>
 
     <!-- Folders -->
-    <string name="tracks_in_folder">%d utworów</string>
+    <string name="tracks_in_folder">%d tracks</string>
 
     <!-- FullPlayerScreen -->
-    <string name="shuffle">Losowo</string>
-    <string name="previous">Poprzedni</string>
-    <string name="next">Następny</string>
-    <string name="repeat">Powtórz</string>
-    <string name="track_default">Utwór</string>
+    <string name="full_player_section_extra">Extra</string>
+    <string name="master_data_title">Master Data</string>
+    <string name="master_data_analyzing">Analyzing track…</string>
+    <string name="master_data_no_data">No data</string>
+    <string name="master_data_track_too_long">Track too long — Master Data only for singles (up to 10 min)</string>
+    <string name="master_data_header_peak">Peak</string>
+    <string name="master_data_header_clips">Clips</string>
+    <string name="master_data_header_lufs_m">LUFS-M</string>
+    <string name="master_data_header_lufs_s">LUFS-S</string>
+    <string name="master_data_header_lufs_i">LUFS-I</string>
+    <string name="master_data_header_lra">LRA</string>
+    <string name="shuffle">Shuffle</string>
+    <string name="previous">Previous</string>
+    <string name="next">Next</string>
+    <string name="repeat">Repeat</string>
+    <string name="track_default">Track</string>
 
     <!-- RenderScreen -->
-    <string name="export_with_eq">Eksport z EQ</string>
-    <string name="current_track_with_eq">Aktualny utwór z ustawieniami EQ</string>
-    <string name="select_track_in_tracks">Wybierz utwór w zakładce Utwory</string>
-    <string name="export_as_aac">Export jako AAC</string>
-    <string name="export_as_wav">Export jako WAV</string>
-    <string name="file_name">Nazwa pliku</string>
-    <string name="name_label">Nazwa</string>
+    <string name="export_with_eq">Export with EQ</string>
+    <string name="current_track_with_eq">Current track with EQ settings</string>
+    <string name="select_track_in_tracks">Select track in Tracks tab</string>
+    <string name="export_as_aac">Export as AAC</string>
+    <string name="export_as_wav">Export as WAV</string>
+    <string name="file_name">File name</string>
+    <string name="name_label">Name</string>
     <string name="sample_rate">Sample rate:</string>
-    <string name="from_original">z oryginału</string>
+    <string name="from_original">from original</string>
     <string name="hz_44_1">44.1 kHz</string>
     <string name="hz_48">48 kHz</string>
     <string name="hz_44100">44 100 Hz</string>
     <string name="hz_48000">48 000 Hz</string>
     <string name="format_aac">Format: AAC 320 kbps</string>
     <string name="format_wav">Format: WAV 24-bit</string>
-    <string name="render_button">Renderuj</string>
-    <string name="rendering">Renderowanie…</string>
-    <string name="saved">Zapisano!</string>
+    <string name="render_button">Render</string>
+    <string name="rendering">Rendering…</string>
+    <string name="saved">Saved!</string>
     <string name="music_rendered">Music/Rendered</string>
-    <string name="export_another">Eksportuj kolejny</string>
-    <string name="export_error">Błąd eksportu</string>
+    <string name="export_another">Export another</string>
+    <string name="export_error">Export error</string>
+    <string name="render_phase_preparing">Preparing…</string>
+    <string name="render_phase_decoding_audio">Decoding audio…</string>
+    <string name="render_phase_decode_done">Decoding finished</string>
+    <string name="render_phase_eq_applied">EQ applied</string>
+    <string name="render_phase_encoding">Encoding and saving…</string>
+    <string name="render_phase_done">Done!</string>
 
     <!-- Sleep Timer -->
-    <string name="sleep_timer">Wyłącznik czasowy</string>
-    <string name="custom_minutes">Własne (minuty)</string>
-    <string name="disable">Wyłącz</string>
+    <string name="sleep_timer">Sleep timer</string>
+    <string name="custom_minutes">Custom (minutes)</string>
+    <string name="disable">Disable</string>
     <string name="min_remaining">%d min</string>
     <string name="min_short">%dm</string>
     <string name="min_compact">%d</string>
@@ -123,4 +141,26 @@
     <string name="eq_off">OFF</string>
     <string name="eq_pre">Pre</string>
     <string name="eq_reset">RESET ALL</string>
+
+    <!-- Mini player -->
+    <string name="mini_player_empty">Choose a track</string>
+
+    <!-- Toasts -->
+    <string name="toast_shuffle_on">Shuffle on</string>
+    <string name="toast_shuffle_off">Shuffle off</string>
+    <string name="toast_repeat_on">Repeat on</string>
+    <string name="toast_repeat_off">Repeat off</string>
+
+    <!-- Errors / misc -->
+    <string name="unknown_error">Unknown error</string>
+
+    <!-- Playback notification -->
+    <string name="notif_channel_name">Playback</string>
+    <string name="notif_playing">Playing</string>
+    <string name="notif_paused">Paused</string>
+    <string name="notif_action_previous">Previous</string>
+    <string name="notif_action_pause">Pause</string>
+    <string name="notif_action_play">Play</string>
+    <string name="notif_action_next">Next</string>
+    <string name="notif_action_stop">Stop</string>
 </resources>

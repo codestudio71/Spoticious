@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.spoticious"
+    namespace = "com.codestudio71.spoticious"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.spoticious"
+        applicationId = "com.codestudio71.spoticious"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
