@@ -365,6 +365,14 @@ private fun RenderingContent(
         color = MiamiCyan,
         trackColor = Color.White.copy(alpha = 0.2f)
     )
+    Spacer(modifier = Modifier.height(6.dp))
+    Text(
+        text = stringResource(R.string.render_wait_large_files),
+        color = GrayText,
+        fontSize = 12.sp,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth()
+    )
     Spacer(modifier = Modifier.height(8.dp))
     Text("${(progress * 100).toInt()}%", color = MiamiCyan, fontSize = 16.sp)
     Text(

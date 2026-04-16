@@ -127,6 +127,7 @@
     <string name="render_phase_eq_applied">Korekcja EQ zastosowana</string>
     <string name="render_phase_encoding">Kodowanie i zapis pliku…</string>
     <string name="render_phase_done">Gotowe!</string>
+    <string name="render_wait_large_files">Poczekaj. Większe pliki potrzebują więcej czasu na render.</string>
 
     <!-- Sleep Timer -->
     <string name="sleep_timer">Wyłącznik czasowy</string>

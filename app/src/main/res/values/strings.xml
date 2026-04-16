@@ -127,6 +127,7 @@
     <string name="render_phase_eq_applied">EQ applied</string>
     <string name="render_phase_encoding">Encoding and saving…</string>
     <string name="render_phase_done">Done!</string>
+    <string name="render_wait_large_files">Wait. Large files may take a moment to process.</string>
 
     <!-- Sleep Timer -->
     <string name="sleep_timer">Sleep timer</string>

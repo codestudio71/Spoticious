@@ -293,6 +293,8 @@ object MasterDataAnalyzer {
                 val processor = StreamingProcessor(sampleRate, channels)
                 val readBuffer = ByteArray(8192)
                 var remaining = dataSize
+                /** Reszta bajtów między readami — wymagane dla 24-bit (np. 8192 mod 3 = 2). */
+                var carry24 = ByteArray(0)
 
                 while (remaining > 0) {
                     val toRead = minOf(readBuffer.size.toLong(), remaining).toInt()
@@ -312,13 +314,33 @@ object MasterDataAnalyzer {
                                 shortVal.toInt() / 32768f
                             }.also { processor.addClips(chunkClips) }
                         }
-                        bitsPerSample == 24 && audioFormat == 1 -> FloatArray(n / 3) { i ->
-                            val j = i * 3
-                            var v = (readBuffer[j].toInt() and 0xFF) or
-                                ((readBuffer[j + 1].toInt() and 0xFF) shl 8) or
-                                ((readBuffer[j + 2].toInt() and 0xFF) shl 16)
-                            if (v >= 0x800000) v -= 0x1000000
-                            v / 8388608f
+                        bitsPerSample == 24 && audioFormat == 1 -> {
+                            val bytesPerFrame = channels * 3
+                            if (bytesPerFrame <= 0) return null
+                            val combined = ByteArray(carry24.size + n)
+                            if (carry24.isNotEmpty()) {
+                                System.arraycopy(carry24, 0, combined, 0, carry24.size)
+                            }
+                            System.arraycopy(readBuffer, 0, combined, carry24.size, n)
+                            val totalComplete = (combined.size / bytesPerFrame) * bytesPerFrame
+                            carry24 = if (totalComplete < combined.size) {
+                                combined.copyOfRange(totalComplete, combined.size)
+                            } else {
+                                ByteArray(0)
+                            }
+                            if (totalComplete == 0) {
+                                FloatArray(0)
+                            } else {
+                                val decodeBytes = combined.copyOfRange(0, totalComplete)
+                                FloatArray(decodeBytes.size / 3) { i ->
+                                    val j = i * 3
+                                    var v = (decodeBytes[j].toInt() and 0xFF) or
+                                        ((decodeBytes[j + 1].toInt() and 0xFF) shl 8) or
+                                        ((decodeBytes[j + 2].toInt() and 0xFF) shl 16)
+                                    if (v >= 0x800000) v -= 0x1000000
+                                    v / 8388608f
+                                }
+                            }
                         }
                         bitsPerSample == 32 && audioFormat == 3 -> {
                             val bb = ByteBuffer.wrap(readBuffer, 0, n).order(ByteOrder.LITTLE_ENDIAN)
