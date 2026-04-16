@@ -129,7 +129,16 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                                 _currentPosition.value = 0
                             }
                             Player.REPEAT_MODE_ALL -> skipToNext()
-                            else -> {}
+                            else -> {
+                                if (_shuffleEnabled.value) {
+                                    skipToNext()
+                                } else {
+                                    val lastIndex = _currentPlaylist.value.size - 1
+                                    if (_currentIndex.value < lastIndex) {
+                                        skipToNext()
+                                    }
+                                }
+                            }
                         }
                     }
                 }
