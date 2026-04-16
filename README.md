@@ -5,7 +5,7 @@
 <h1 align="center">Spoticious</h1>
 
 <p align="center">
-  <b>An Android music player for people who care about audio.</b>
+  <b>An Android music player for people who care about audio. 100% FOSS.</b>
 </p>
 
 ---
