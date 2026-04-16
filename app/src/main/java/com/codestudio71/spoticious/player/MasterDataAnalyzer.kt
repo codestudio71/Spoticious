@@ -137,6 +137,22 @@ object MasterDataAnalyzer {
         )
     }
 
+    private fun formatGetIntOrNull(format: MediaFormat, key: String): Int? = try {
+        format.getInteger(key)
+    } catch (_: Exception) {
+        null
+    }
+
+    /** encoder-delay / encoder-padding w próbkach na kanał (typowe dla AAC); fallback ~AAC+MP3. */
+    private fun readEncoderSkipSamples(format: MediaFormat): Pair<Int, Int> {
+        val d = formatGetIntOrNull(format, MediaFormat.KEY_ENCODER_DELAY) ?: 0
+        val p = formatGetIntOrNull(format, MediaFormat.KEY_ENCODER_PADDING) ?: 0
+        val effD = if (d > 0) d else 2200
+        val effP = if (p > 0) p else 1500
+        Log.d(TAG, "Encoder delay skipped: $effD, padding skipped: $effP")
+        return effD to effP
+    }
+
     private fun blockLufs(samples: FloatArray, channels: Int): Double {
         if (samples.isEmpty()) return -100.0
         val samplesPerChannel = samples.size / channels
@@ -295,6 +311,8 @@ object MasterDataAnalyzer {
                 var remaining = dataSize
                 /** Reszta bajtów między readami — wymagane dla 24-bit (np. 8192 mod 3 = 2). */
                 var carry24 = ByteArray(0)
+                /** Stan cluster clipów (≥2 kolejne próbki na szynie) — między chunkami WAV. */
+                var prevWasRail = false
 
                 while (remaining > 0) {
                     val toRead = minOf(readBuffer.size.toLong(), remaining).toInt()
@@ -304,15 +322,28 @@ object MasterDataAnalyzer {
 
                     val chunkFloats = when {
                         bitsPerSample == 16 && audioFormat == 1 -> {
-                            var chunkClips = 0
-                            FloatArray(n / 2) { i ->
-                                val j = i * 2
-                                val lo = readBuffer[j].toInt() and 0xFF
-                                val hi = readBuffer[j + 1].toInt() and 0xFF
-                                val shortVal = (lo or (hi shl 8)).toShort()
-                                if (shortVal == Short.MAX_VALUE || shortVal == Short.MIN_VALUE) chunkClips++
-                                shortVal.toInt() / 32768f
-                            }.also { processor.addClips(chunkClips) }
+                            val count = n / 2
+                            if (count <= 0) {
+                                FloatArray(0)
+                            } else {
+                                var chunkClips = 0
+                                val out = FloatArray(count)
+                                var i = 0
+                                while (i < count) {
+                                    val j = i * 2
+                                    val lo = readBuffer[j].toInt() and 0xFF
+                                    val hi = readBuffer[j + 1].toInt() and 0xFF
+                                    val shortVal = (lo or (hi shl 8)).toShort()
+                                    val floatVal = shortVal.toInt() / 32768f
+                                    val isClip = abs(floatVal) >= 0.99f
+                                    if (isClip && prevWasRail) chunkClips++
+                                    prevWasRail = isClip
+                                    out[i] = floatVal
+                                    i++
+                                }
+                                processor.addClips(chunkClips)
+                                out
+                            }
                         }
                         bitsPerSample == 24 && audioFormat == 1 -> {
                             val bytesPerFrame = channels * 3
@@ -332,23 +363,65 @@ object MasterDataAnalyzer {
                                 FloatArray(0)
                             } else {
                                 val decodeBytes = combined.copyOfRange(0, totalComplete)
-                                FloatArray(decodeBytes.size / 3) { i ->
+                                val sampleCount = decodeBytes.size / 3
+                                var chunkClips = 0
+                                val out = FloatArray(sampleCount)
+                                var i = 0
+                                while (i < sampleCount) {
                                     val j = i * 3
                                     var v = (decodeBytes[j].toInt() and 0xFF) or
                                         ((decodeBytes[j + 1].toInt() and 0xFF) shl 8) or
                                         ((decodeBytes[j + 2].toInt() and 0xFF) shl 16)
                                     if (v >= 0x800000) v -= 0x1000000
-                                    v / 8388608f
+                                    val floatVal = v / 8388608f
+                                    val isClip = abs(floatVal) >= 0.99f
+                                    if (isClip && prevWasRail) chunkClips++
+                                    prevWasRail = isClip
+                                    out[i] = floatVal
+                                    i++
                                 }
+                                processor.addClips(chunkClips)
+                                out
                             }
                         }
                         bitsPerSample == 32 && audioFormat == 3 -> {
                             val bb = ByteBuffer.wrap(readBuffer, 0, n).order(ByteOrder.LITTLE_ENDIAN)
-                            FloatArray(n / 4) { bb.float.coerceIn(-1f, 1f) }
+                            val count = n / 4
+                            if (count <= 0) FloatArray(0)
+                            else {
+                                var chunkClips = 0
+                                val out = FloatArray(count)
+                                var i = 0
+                                while (i < count) {
+                                    val raw = bb.float
+                                    val isClip = abs(raw) >= 0.99f
+                                    if (isClip && prevWasRail) chunkClips++
+                                    prevWasRail = isClip
+                                    out[i++] = raw.coerceIn(-1f, 1f)
+                                }
+                                processor.addClips(chunkClips)
+                                out
+                            }
                         }
                         bitsPerSample == 32 && audioFormat == 1 -> {
                             val bb = ByteBuffer.wrap(readBuffer, 0, n).order(ByteOrder.LITTLE_ENDIAN)
-                            FloatArray(n / 4) { (bb.int / 2147483648f).coerceIn(-1f, 1f) }
+                            val count = n / 4
+                            if (count <= 0) FloatArray(0)
+                            else {
+                                var chunkClips = 0
+                                val out = FloatArray(count)
+                                var i = 0
+                                while (i < count) {
+                                    val iv = bb.int
+                                    val floatVal = (iv / 2147483648f).coerceIn(-1f, 1f)
+                                    val isClip = abs(floatVal) >= 0.99f
+                                    if (isClip && prevWasRail) chunkClips++
+                                    prevWasRail = isClip
+                                    out[i++] = floatVal
+                                }
+                                processor.addClips(chunkClips)
+                                out
+                            }
                         }
                         else -> return null
                     }
@@ -382,6 +455,8 @@ object MasterDataAnalyzer {
             val format = extractor.getTrackFormat(trackIndex)
             val mime = format.getString(MediaFormat.KEY_MIME) ?: return null
 
+            val trackDurationUs = try { format.getLong(MediaFormat.KEY_DURATION) } catch (_: Exception) { 0L }
+
             val sourceSampleRate = try { format.getInteger(MediaFormat.KEY_SAMPLE_RATE) } catch (_: Exception) { 48000 }
             val sourceChannels = try { format.getInteger(MediaFormat.KEY_CHANNEL_COUNT) } catch (_: Exception) { 2 }
 
@@ -392,6 +467,28 @@ object MasterDataAnalyzer {
             val outputFormat = decoder.outputFormat
             val outputSampleRate = try { outputFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE) } catch (_: Exception) { sourceSampleRate }
             val outputChannels = try { outputFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT) } catch (_: Exception) { sourceChannels }
+
+            var encoderDelaySamples = 2200
+            var encoderPaddingSamples = 1500
+            readEncoderSkipSamples(outputFormat).let { pair ->
+                encoderDelaySamples = pair.first
+                encoderPaddingSamples = pair.second
+            }
+
+            val samplesPerChannelEst = if (trackDurationUs > 0L && outputSampleRate > 0) {
+                trackDurationUs * outputSampleRate.toLong() / 1_000_000L
+            } else {
+                0L
+            }
+            val totalEstInterleaved: Long = if (samplesPerChannelEst > 0L && outputChannels > 0) {
+                val cap = minOf(samplesPerChannelEst, Long.MAX_VALUE / outputChannels.coerceAtLeast(1))
+                cap * outputChannels
+            } else {
+                Long.MAX_VALUE
+            }
+
+            var globalOutputSampleIndex = 0L
+            var prevWasRailMc = false
 
             // STREAMING: only block buffer + List<Double>, no full FloatArray
             val processor = StreamingProcessor(outputSampleRate, outputChannels)
@@ -422,7 +519,12 @@ object MasterDataAnalyzer {
                 val outputBufferIndex = decoder.dequeueOutputBuffer(bufferInfo, 5000)
                 when {
                     outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> emptyCount++
-                    outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {}
+                    outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                        readEncoderSkipSamples(decoder.outputFormat).let { pair ->
+                            encoderDelaySamples = pair.first
+                            encoderPaddingSamples = pair.second
+                        }
+                    }
                     outputBufferIndex >= 0 -> {
                         emptyCount = 0
                         if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) outputDone = true
@@ -445,14 +547,31 @@ object MasterDataAnalyzer {
                                     shortBuf.limit(offset + chunkShorts)
                                     var chunkClips = 0
                                     val chunk = FloatArray(chunkShorts)
-                                    var i = 0
-                                    while (i < chunkShorts) {
+                                    var w = 0
+                                    while (shortBuf.hasRemaining()) {
                                         val shortVal = shortBuf.get()
-                                        if (shortVal == Short.MAX_VALUE || shortVal == Short.MIN_VALUE) chunkClips++
-                                        chunk[i++] = shortVal.toInt() / 32768f
+                                        val skipStart =
+                                            globalOutputSampleIndex < encoderDelaySamples.toLong() * outputChannels
+                                        val skipEnd = totalEstInterleaved != Long.MAX_VALUE &&
+                                            globalOutputSampleIndex >=
+                                            totalEstInterleaved - encoderPaddingSamples.toLong() * outputChannels
+                                        globalOutputSampleIndex++
+
+                                        if (skipStart || skipEnd) {
+                                            prevWasRailMc = false
+                                            continue
+                                        }
+
+                                        val floatVal = shortVal.toInt() / 32768f
+                                        val isClip = abs(floatVal) >= 0.99f
+                                        if (isClip && prevWasRailMc) chunkClips++
+                                        prevWasRailMc = isClip
+                                        chunk[w++] = floatVal
                                     }
-                                    processor.addClips(chunkClips)
-                                    processor.processChunk(chunk)
+                                    if (w > 0) {
+                                        processor.addClips(chunkClips)
+                                        processor.processChunk(if (w == chunk.size) chunk else chunk.copyOf(w))
+                                    }
                                     offset += chunkShorts
                                 }
                             }
