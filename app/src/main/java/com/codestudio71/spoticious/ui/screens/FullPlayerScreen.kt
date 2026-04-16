@@ -1,7 +1,7 @@
 package com.codestudio71.spoticious.ui.screens
 
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -71,6 +71,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import com.codestudio71.spoticious.R
 import com.codestudio71.spoticious.player.PlayerViewModel
+import kotlin.math.hypot
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.material3.LinearProgressIndicator
@@ -190,7 +191,11 @@ fun FullPlayerScreen(
             Spacer(modifier = Modifier.height(28.dp))
 
             val durationMs = duration.coerceAtLeast(1L)
-            val progress = (currentPosition.toFloat() / durationMs).coerceIn(0f, 1f)
+            val progress = if (duration > 0 && currentPosition >= duration - 300L) {
+                1f
+            } else {
+                (currentPosition.toFloat() / durationMs).coerceIn(0f, 1f)
+            }
 
             CustomSeekBar(
                 progress = progress,
@@ -198,7 +203,7 @@ fun FullPlayerScreen(
                 isPlaying = isPlaying,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(72.dp)
             )
 
             Row(
@@ -662,72 +667,95 @@ private fun CustomSeekBar(
     val scope = rememberCoroutineScope()
 
     BoxWithConstraints(
-        modifier = modifier
-            .pointerInput(onSeek) {
-                detectTapGestures { offset ->
-                    val fraction = (offset.x / size.width.toFloat()).coerceIn(0f, 1f)
-                    dragProgress = fraction
-                    onSeek(fraction)
-                    scope.launch {
-                        delay(200)
-                        dragProgress = null
+        modifier = modifier.pointerInput(Unit) {
+            awaitEachGesture {
+                val down = awaitFirstDown()
+                val w = size.width.toFloat().coerceAtLeast(1f)
+                fun fraction(px: Float) = (px / w).coerceIn(0f, 1f)
+
+                val downPos = down.position
+                val startFrac = fraction(downPos.x)
+                dragProgress = startFrac
+                var dragging = false
+                var lastFrac = startFrac
+                val slop = 4.dp.toPx()
+
+                while (true) {
+                    val event = awaitPointerEvent()
+                    val change = event.changes.firstOrNull { it.id == down.id } ?: continue
+
+                    if (!change.pressed) {
+                        onSeek(lastFrac)
+                        scope.launch {
+                            delay(200)
+                            dragProgress = null
+                        }
+                        change.consume()
+                        break
                     }
+
+                    val dist = hypot(
+                        change.position.x - downPos.x,
+                        change.position.y - downPos.y
+                    )
+                    if (!dragging && dist > slop) {
+                        dragging = true
+                    }
+
+                    val newFrac = fraction(change.position.x)
+                    lastFrac = newFrac
+                    dragProgress = newFrac
+                    if (dragging) {
+                        onSeek(newFrac)
+                    }
+                    change.consume()
                 }
             }
-            .pointerInput(progressCoerced) {
-                detectHorizontalDragGestures(
-                    onDragStart = { dragProgress = progressCoerced },
-                    onDragEnd = {
-                        dragProgress?.let { onSeek(it) }
-                        dragProgress = null
-                    },
-                    onDragCancel = { dragProgress = null },
-                    onHorizontalDrag = { _, dragAmount ->
-                        val newProgress = ((dragProgress ?: progressCoerced) + dragAmount / size.width.toFloat())
-                            .coerceIn(0f, 1f)
-                        dragProgress = newProgress
-                        onSeek(newProgress)
-                    }
-                )
-            }
+        }
     ) {
         val width = maxWidth
-        val trackHeight = 10.dp
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(trackHeight)
-                .align(Alignment.CenterStart)
-                .background(MiamiCyan.copy(alpha = 0.3f), RoundedCornerShape(2.dp))
+                .padding(vertical = 8.dp)
         ) {
+            val trackHeight = 10.dp
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(displayedProgress)
+                    .fillMaxWidth()
                     .height(trackHeight)
+                    .align(Alignment.Center)
+                    .background(MiamiCyan.copy(alpha = 0.3f), RoundedCornerShape(2.dp))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(displayedProgress)
+                        .height(trackHeight)
+                        .align(Alignment.CenterStart)
+                        .background(MiamiCyan, RoundedCornerShape(2.dp))
+                )
+            }
+            val thumbSize = 52.dp
+            val thumbRadius = thumbSize / 2
+            val thumbCenter = (width * displayedProgress).coerceIn(0.dp, width)
+            Icon(
+                imageVector = if (isPlaying) Icons.Default.PlayArrow else Icons.Default.Pause,
+                contentDescription = null,
+                tint = MiamiPink,
+                modifier = Modifier
+                    .size(52.dp)
                     .align(Alignment.CenterStart)
-                    .background(MiamiCyan, RoundedCornerShape(2.dp))
+                    .offset(x = thumbCenter - thumbRadius)
+                    .drawBehind {
+                        val center = Offset(size.width / 2f, size.height / 2f)
+                        val glowColor = Color(0xFFFF4DB8)
+                        // neon glow — warstwy symulują blur
+                        drawCircle(glowColor.copy(alpha = 0.15f), radius = size.minDimension / 2.2f + 12.dp.toPx(), center = center)
+                        drawCircle(glowColor.copy(alpha = 0.25f), radius = size.minDimension / 2.2f + 6.dp.toPx(), center = center)
+                        drawCircle(glowColor.copy(alpha = 0.4f), radius = size.minDimension / 2.2f, center = center)
+                    }
             )
         }
-        val thumbSize = 52.dp
-        val thumbRadius = thumbSize / 2
-        val thumbCenter = (width * displayedProgress).coerceIn(thumbRadius, width - thumbRadius)
-        Icon(
-            imageVector = if (isPlaying) Icons.Default.PlayArrow else Icons.Default.Pause,
-            contentDescription = null,
-            tint = MiamiPink,
-            modifier = Modifier
-                .size(52.dp)
-                .align(Alignment.CenterStart)
-                .offset(x = thumbCenter - thumbRadius)
-                .drawBehind {
-                    val center = Offset(size.width / 2f, size.height / 2f)
-                    val glowColor = Color(0xFFFF4DB8)
-                    // neon glow — warstwy symulują blur
-                    drawCircle(glowColor.copy(alpha = 0.15f), radius = size.minDimension / 2.2f + 12.dp.toPx(), center = center)
-                    drawCircle(glowColor.copy(alpha = 0.25f), radius = size.minDimension / 2.2f + 6.dp.toPx(), center = center)
-                    drawCircle(glowColor.copy(alpha = 0.4f), radius = size.minDimension / 2.2f, center = center)
-                }
-        )
     }
 }
 

@@ -321,6 +321,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         player.setMediaItem(mediaItem)
         player.prepare()
         if (autoplay) {
+            _currentPosition.value = 0L
             player.play()
             _isPlaying.value = true
         } else {
