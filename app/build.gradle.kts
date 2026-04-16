@@ -11,8 +11,8 @@ android {
         applicationId = "com.codestudio71.spoticious"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.1"
         resConfigs("pl") // Polski natywnie – tylko values/ (fallback PL)
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
