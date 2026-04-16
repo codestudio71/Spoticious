@@ -75,6 +75,7 @@ import kotlin.math.hypot
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
@@ -182,7 +183,7 @@ fun FullPlayerScreen(
                     .fillMaxWidth()
                     .basicMarquee(
                         iterations = Int.MAX_VALUE,
-                        repeatDelayMillis = 1000,
+                        repeatDelayMillis = 6000,
                         initialDelayMillis = 2000,
                         velocity = 50.dp
                     )
@@ -493,7 +494,10 @@ private fun SleepTimerDialog(
                 color = MiamiCyan,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
             )
 
             listOf(5, 10, 15, 30, 45, 60).forEach { mins ->
@@ -511,35 +515,34 @@ private fun SleepTimerDialog(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = customMinutes,
-                    onValueChange = { customMinutes = it.filter { c -> c.isDigit() }.take(4) },
-                    label = { Text(stringResource(R.string.custom_minutes), color = Color.White.copy(alpha = 0.7f)) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = MiamiCyan,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
-                        cursorColor = MiamiCyan,
-                        focusedLabelColor = MiamiCyan,
-                        unfocusedLabelColor = Color.White.copy(alpha = 0.7f)
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-                TextButton(onClick = {
-                    val m = customMinutes.toIntOrNull()?.coerceIn(1, 600)
-                    if (m != null) onSetTimer(m)
-                }) {
-                    Text(stringResource(R.string.save), color = MiamiCyan)
-                }
-            }
+            OutlinedTextField(
+                value = customMinutes,
+                onValueChange = { customMinutes = it.filter { c -> c.isDigit() }.take(4) },
+                label = {
+                    Text(
+                        text = stringResource(R.string.custom_minutes),
+                        color = Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = MiamiCyan,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                    cursorColor = MiamiCyan,
+                    focusedLabelColor = MiamiCyan,
+                    unfocusedLabelColor = Color.White.copy(alpha = 0.7f)
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
 
             if (currentRemaining != null) {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -556,11 +559,20 @@ private fun SleepTimerDialog(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(stringResource(R.string.cancel), color = Color.White.copy(alpha = 0.8f))
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.cancel), color = Color.White.copy(alpha = 0.8f))
+                }
+                TextButton(onClick = {
+                    val m = customMinutes.toIntOrNull()?.coerceIn(1, 600)
+                    if (m != null) onSetTimer(m)
+                }) {
+                    Text(stringResource(R.string.save), color = MiamiCyan)
+                }
             }
         }
     }
