@@ -1,0 +1,12 @@
+Spoticious is a local music player for people who care about audio quality.
+Features:
+• Master Data — per-track loudness analysis: LUFS-I, LRA, True Peak, Clips. ITU-R BS.1770-4 with K-weighting and gating. Same numbers you'd see after a render in Reaper.
+• EQ — 10-band graphic equalizer (31 Hz – 16 kHz) + preamp. Band layout modeled after Audacious. Settings persist between sessions.
+• Render / Export — apply your EQ and export the result. AAC (up to 320 kbps) or WAV 24-bit, via MediaCodec. No FFmpegKit — smaller APK.
+• Playlist, sleep timer, search, sort by title / duration / date.
+• Background playback with media notification and full controls.
+• dBFS Meter — coming soon.
+• Wrapped — local listening stats, coming soon.
+No ads. No tracking. No internet permission. Your music stays on your device.
+Stack: Kotlin · Jetpack Compose · ExoPlayer · MediaCodec · AndroidX Media
+License: Apache 2.0
