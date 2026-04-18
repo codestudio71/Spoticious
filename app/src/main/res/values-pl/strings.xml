@@ -97,6 +97,9 @@
     <string name="previous">Poprzedni</string>
     <string name="next">Następny</string>
     <string name="repeat">Powtórz</string>
+    <string name="repeat_off">Powtarzanie wył.</string>
+    <string name="repeat_all">Powtarzaj listę</string>
+    <string name="repeat_one">Powtarzaj utwór</string>
     <string name="track_default">Utwór</string>
 
     <!-- RenderScreen -->
@@ -142,6 +145,21 @@
     <string name="eq_off">OFF</string>
     <string name="eq_pre">Pre</string>
     <string name="eq_reset">RESET ALL</string>
+    <string name="eq_band_hold_to_reset">Przytrzymaj suwak pasma, by zresetować do 0 dB</string>
+    <string name="eq_presets">Presety</string>
+    <string name="eq_preset_save">Zapisz preset</string>
+    <string name="eq_preset_name_hint">Nazwa presetu</string>
+    <string name="eq_preset_delete_title">Usunąć preset?</string>
+    <string name="eq_preset_delete_message">Usunąć preset „%s”?</string>
+    <string name="eq_preset_empty_hint">Brak zapisanych presetów. Ustaw EQ i kliknij Zapisz.</string>
+    <string name="eq_preset_saved">Preset zapisany</string>
+    <string name="eq_preset_loaded">Załadowano preset: %s</string>
+    <string name="eq_preset_error_empty_name">Nazwa nie może być pusta</string>
+    <string name="eq_preset_overwrite_title">Nadpisać istniejący preset?</string>
+    <string name="eq_preset_overwrite_message">Preset o tej nazwie już istnieje. Zastąpić?</string>
+    <string name="eq_preset_error_limit">Limit presetów osiągnięty — usuń stary żeby dodać nowy</string>
+    <string name="eq_presets_content_description">Presety EQ</string>
+    <string name="eq_preset_delete_confirm">Usuń</string>
 
     <!-- Mini player -->
     <string name="mini_player_empty">Wybierz utwór</string>
