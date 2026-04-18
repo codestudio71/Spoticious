@@ -43,23 +43,28 @@ object MasterDataAnalyzer {
     private const val K_HIGHPASS_A2 = 0.99007225036621
 
     fun analyze(context: Context, uri: Uri): MasterData? {
-        Log.d(TAG, "analyze: uri=$uri")
         return try {
-            val wavResult = decodeWavStreaming(context, uri)
-            if (wavResult != null) {
-                Log.d(TAG, "analyze: WAV streaming succeeded")
-                return wavResult
+            Log.d(TAG, "analyze: uri=$uri")
+            try {
+                val wavResult = decodeWavStreaming(context, uri)
+                if (wavResult != null) {
+                    Log.d(TAG, "analyze: WAV streaming succeeded")
+                    return wavResult
+                }
+                Log.d(TAG, "analyze: WAV failed, trying MediaCodec streaming")
+                val codecResult = decodeWithMediaCodecStreaming(context, uri)
+                if (codecResult != null) Log.d(TAG, "analyze: MediaCodec streaming succeeded")
+                codecResult
+            } catch (e: OutOfMemoryError) {
+                Log.e(TAG, "OOM - file too large")
+                null
+            } catch (e: Exception) {
+                Log.e(TAG, "analyze: exception", e)
+                null
             }
-            Log.d(TAG, "analyze: WAV failed, trying MediaCodec streaming")
-            val codecResult = decodeWithMediaCodecStreaming(context, uri)
-            if (codecResult != null) Log.d(TAG, "analyze: MediaCodec streaming succeeded")
-            codecResult
-        } catch (e: OutOfMemoryError) {
-            Log.e(TAG, "OOM - file too large")
-            null
-        } catch (e: Exception) {
-            Log.e(TAG, "analyze: exception", e)
-            null
+        } catch (t: Throwable) {
+            Log.e("MDDiag", "analyze() THREW", t)
+            throw t
         }
     }
 

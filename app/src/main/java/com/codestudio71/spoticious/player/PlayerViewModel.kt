@@ -369,6 +369,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             Log.w("MasterDataAnalyzer", "loadMasterData: no uri selected")
             return
         }
+        val app = getApplication<Application>()
         Log.d("MasterDataAnalyzer", "loadMasterData: uri=$uri")
         _masterDataLoading.value = true
         _masterData.value = null
@@ -382,10 +383,20 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         viewModelScope.launch {
-            _masterData.value = withContext(Dispatchers.IO) {
-                MasterDataAnalyzer.analyze(getApplication(), uri)
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    try {
+                        MasterDataAnalyzer.analyze(app, uri)
+                    } catch (t: Throwable) {
+                        null
+                    }
+                }
+                _masterData.value = result
+            } catch (t: Throwable) {
+                _masterData.value = null
+            } finally {
+                _masterDataLoading.value = false
             }
-            _masterDataLoading.value = false
         }
     }
 
