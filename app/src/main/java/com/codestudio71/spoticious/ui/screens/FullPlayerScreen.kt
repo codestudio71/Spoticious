@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -42,12 +43,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.pointer.pointerInput
@@ -80,6 +83,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
 import com.codestudio71.spoticious.ui.theme.MiamiPink
+import com.google.android.exoplayer2.Player
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -96,13 +100,16 @@ fun FullPlayerScreen(
     val masterData by viewModel.masterData.collectAsState()
     val masterDataLoading by viewModel.masterDataLoading.collectAsState()
     val masterDataError by viewModel.masterDataError.collectAsState()
+    val masterDataProgress by viewModel.masterDataProgress.collectAsState()
     val selectedUri by viewModel.selectedUri.collectAsState()
     var extraExpanded by remember { mutableStateOf(false) }
-    var masterDataEnabled by remember { mutableStateOf(false) }
+    var masterDataEnabled by rememberSaveable(selectedUri?.toString()) { mutableStateOf(false) }
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     val sleepTimerRemaining by viewModel.sleepTimerRemainingMinutes.collectAsState()
 
-    LaunchedEffect(selectedUri) { masterDataEnabled = false }
+    LaunchedEffect(Unit) {
+        Log.d("R3Trace", "FullPlayerScreen first composition: selectedUri=$selectedUri")
+    }
 
     if (showSleepTimerDialog) {
         SleepTimerDialog(
@@ -290,10 +297,24 @@ fun FullPlayerScreen(
                     onClick = { viewModel.cycleRepeatMode() },
                     modifier = Modifier.size(48.dp)
                 ) {
+                    val repeatCd = when (repeatMode) {
+                        Player.REPEAT_MODE_OFF -> R.string.repeat_off
+                        Player.REPEAT_MODE_ALL -> R.string.repeat_all
+                        Player.REPEAT_MODE_ONE -> R.string.repeat_one
+                        else -> R.string.repeat_off
+                    }
                     Icon(
-                        imageVector = Icons.Default.Repeat,
-                        contentDescription = stringResource(R.string.repeat),
-                        tint = if (repeatMode != com.google.android.exoplayer2.Player.REPEAT_MODE_OFF) MiamiPink else Color.White.copy(alpha = 0.6f),
+                        imageVector = if (repeatMode == Player.REPEAT_MODE_ONE) {
+                            Icons.Default.RepeatOne
+                        } else {
+                            Icons.Default.Repeat
+                        },
+                        contentDescription = stringResource(repeatCd),
+                        tint = when (repeatMode) {
+                            Player.REPEAT_MODE_OFF -> Color.White.copy(alpha = 0.4f)
+                            Player.REPEAT_MODE_ALL, Player.REPEAT_MODE_ONE -> MiamiCyan
+                            else -> Color.White.copy(alpha = 0.4f)
+                        },
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -445,6 +466,7 @@ fun FullPlayerScreen(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 LinearProgressIndicator(
+                                    progress = { masterDataProgress.coerceIn(0f, 1f) },
                                     modifier = Modifier.fillMaxWidth(),
                                     color = MiamiCyan,
                                     trackColor = Color.White.copy(alpha = 0.2f)

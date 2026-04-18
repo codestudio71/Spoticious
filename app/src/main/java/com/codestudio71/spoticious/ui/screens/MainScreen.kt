@@ -1,5 +1,6 @@
 package com.codestudio71.spoticious.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -87,6 +88,11 @@ fun MainScreen(modifier: Modifier = Modifier) {
     val playerViewModel: PlayerViewModel = viewModel()
     val foldersViewModel: FoldersViewModel = viewModel()
 
+    val openFullPlayer: () -> Unit = {
+        Log.d("R3Trace", "MainScreen setShowFullPlayer(true): selectedUri=${playerViewModel.selectedUri.value}")
+        showFullPlayer = true
+    }
+
     LaunchedEffect(sortMode) {
         foldersViewModel.setSortOrder(sortMode)
     }
@@ -132,7 +138,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                 MiniPlayer(
                     viewModel = playerViewModel,
                     onTapWhenEmpty = { selectedTab = Tab.UTWORY },
-                    onTapWhenPlaying = { showFullPlayer = true }
+                    onTapWhenPlaying = openFullPlayer
                 )
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -212,7 +218,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                         foldersViewModel = foldersViewModel,
                         searchQuery = searchQuery,
                         sortMode = sortMode,
-                        onOpenFullPlayer = { showFullPlayer = true }
+                        onOpenFullPlayer = openFullPlayer
                     )
                     Tab.FOLDERY -> FoldersScreen(
                         modifier = Modifier.fillMaxSize(),

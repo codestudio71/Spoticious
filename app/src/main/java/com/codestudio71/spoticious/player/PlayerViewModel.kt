@@ -1,6 +1,7 @@
 package com.codestudio71.spoticious.player
 
 import android.app.Application
+import android.content.ContentUris
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
@@ -9,9 +10,11 @@ import android.widget.Toast
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.OpenableColumns
-import org.json.JSONArray
 import org.json.JSONObject
 import com.codestudio71.spoticious.R
+import com.codestudio71.spoticious.data.EqPrefKeys
+import com.codestudio71.spoticious.data.eqPreferencesDataStore
+import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.exoplayer2.ExoPlayer
@@ -21,11 +24,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
+import java.util.Locale
 
 data class AudioMetadata(
     val format: String,
@@ -37,7 +47,8 @@ data class AudioMetadata(
 class PlayerViewModel(application: Application) : AndroidViewModel(application) {
 
     private val playbackRepo = PlaybackStateRepository(application)
-    private val eqPrefs = application.getSharedPreferences("eq_settings", Context.MODE_PRIVATE)
+    /** Legacy SharedPreferences — tylko jednorazowa migracja do DataStore. */
+    private val eqLegacyPrefs = application.getSharedPreferences("eq_settings", Context.MODE_PRIVATE)
 
     private val player: ExoPlayer
         get() = PlaybackService.player ?: error("PlaybackService not ready")
@@ -47,6 +58,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _selectedUri = MutableStateFlow<Uri?>(null)
     val selectedUri: StateFlow<Uri?> = _selectedUri.asStateFlow()
+
+    /** Ten sam strumień co [selectedUri] — URI aktualnie wczytanego utworu w playerze. */
+    val currentPlayingUri: StateFlow<Uri?> = selectedUri
 
     private val _fileName = MutableStateFlow<String?>(null)
     val fileName: StateFlow<String?> = _fileName.asStateFlow()
@@ -63,14 +77,22 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private val _metadata = MutableStateFlow<AudioMetadata?>(null)
     val metadata: StateFlow<AudioMetadata?> = _metadata.asStateFlow()
 
-    private val _masterData = MutableStateFlow<MasterData?>(null)
-    val masterData: StateFlow<MasterData?> = _masterData.asStateFlow()
+    /** Master Data z [MasterDataRepository] — analiza nie ginie przy opuszczeniu FullPlayer. */
+    val masterData: StateFlow<MasterData?> = combine(_selectedUri, MasterDataRepository.entries) { uri, entries ->
+        uri?.let { u -> entries[u.toString()]?.data }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    private val _masterDataLoading = MutableStateFlow(false)
-    val masterDataLoading: StateFlow<Boolean> = _masterDataLoading.asStateFlow()
+    val masterDataLoading: StateFlow<Boolean> = combine(_selectedUri, MasterDataRepository.entries) { uri, entries ->
+        uri?.let { u -> entries[u.toString()]?.loading } ?: false
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    private val _masterDataError = MutableStateFlow<String?>(null)
-    val masterDataError: StateFlow<String?> = _masterDataError.asStateFlow()
+    val masterDataError: StateFlow<String?> = combine(_selectedUri, MasterDataRepository.entries) { uri, entries ->
+        uri?.let { u -> entries[u.toString()]?.error }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val masterDataProgress: StateFlow<Float> = combine(_selectedUri, MasterDataRepository.entries) { uri, entries ->
+        uri?.let { u -> entries[u.toString()]?.progress ?: 0f } ?: 0f
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, 0f)
 
     private val _eqEnabled = MutableStateFlow(false)
     val eqEnabled: StateFlow<Boolean> = _eqEnabled.asStateFlow()
@@ -80,6 +102,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _eqPreampDb = MutableStateFlow(0f)
     val eqPreampDb: StateFlow<Float> = _eqPreampDb.asStateFlow()
+
+    private val _eqPresets = MutableStateFlow<List<EqPreset>>(emptyList())
+    val presets: StateFlow<List<EqPreset>> = _eqPresets.asStateFlow()
 
     private val _currentPlaylist = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
     val currentPlaylist: StateFlow<List<Pair<Uri, String>>> = _currentPlaylist.asStateFlow()
@@ -101,12 +126,18 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     private var positionJob: Job? = null
     private var sleepTimerJob: Job? = null
+    private var persistEqJob: Job? = null
     private var lastSeekAtMs: Long = 0L
 
     private fun defaultTrackName(): String = getApplication<Application>().getString(R.string.track_default)
 
     init {
-        application.startService(Intent(application, PlaybackService::class.java))
+        PlaybackService.ensureStarted(application)
+        runBlocking(Dispatchers.IO) {
+            hydrateEqStateFromDataStore()
+            loadEqPresetsFromDataStore()
+            _repeatMode.value = loadRepeatModeFromDataStore()
+        }
         viewModelScope.launch {
             while (PlaybackService.player == null) delay(50)
             PlaybackService.onSkipToNextCallback = { skipToNext() }
@@ -128,7 +159,19 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                                 player.play()
                                 _currentPosition.value = 0
                             }
-                            Player.REPEAT_MODE_ALL -> skipToNext()
+                            Player.REPEAT_MODE_ALL -> {
+                                val pl = _currentPlaylist.value
+                                if (pl.isNotEmpty()) {
+                                    val idx = _currentIndex.value
+                                    if (idx >= pl.lastIndex) {
+                                        _currentIndex.value = 0
+                                        val (u, n) = pl[0]
+                                        selectFileInternal(u, n, autoplay = true)
+                                    } else {
+                                        skipToNext()
+                                    }
+                                }
+                            }
                             else -> {
                                 if (_shuffleEnabled.value) {
                                     skipToNext()
@@ -143,8 +186,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 }
             })
-            loadEqState()
-            eqProcessor.eqEnabled = _eqEnabled.value
+            player.repeatMode = _repeatMode.value
+            applyEqStateToProcessor()
             val externalUri = PendingExternalAudio.poll()
             if (externalUri != null) {
                 val name = displayNameForUri(externalUri)
@@ -186,15 +229,11 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun saveEqState() {
-        val json = JSONObject()
-            .put("preamp", _eqPreampDb.value.toDouble())
-            .put("bands", JSONArray(_eqBandGains.value.map { it.toDouble() }))
-        eqPrefs.edit().putString("eq_json", json.toString()).apply()
-    }
-
-    private fun loadEqState() {
-        val jsonStr = eqPrefs.getString("eq_json", null) ?: return
+    private suspend fun migrateLegacyEqJsonToDataStoreIfNeeded() {
+        val ds = getApplication<Application>().eqPreferencesDataStore
+        val existing = ds.data.first()
+        if (existing.contains(EqPrefKeys.ENABLED)) return
+        val jsonStr = eqLegacyPrefs.getString("eq_json", null) ?: return
         try {
             val json = JSONObject(jsonStr)
             val preamp = json.optDouble("preamp", 0.0).toFloat().coerceIn(-15f, 15f)
@@ -204,11 +243,166 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             } else {
                 List(10) { 0f }
             }
-            _eqPreampDb.value = preamp
-            _eqBandGains.value = bands
-            eqProcessor.setPreamp(preamp)
-            bands.forEachIndexed { i, g -> eqProcessor.setBandGain(i, g) }
-        } catch (_: Exception) {}
+            val inferredOn = bands.any { abs(it) > 0.01f } || abs(preamp) > 0.01f
+            ds.edit { prefs ->
+                prefs[EqPrefKeys.ENABLED] = inferredOn
+                prefs[EqPrefKeys.PREAMP] = preamp
+                bands.forEachIndexed { i, g -> prefs[EqPrefKeys.band(i)] = g }
+            }
+            Log.d("EqPersist", "migrate legacy eq_json enabled=$inferredOn preamp=$preamp bands=$bands")
+        } catch (e: Exception) {
+            Log.d("EqPersist", "migrate legacy skipped: ${e.message}")
+        }
+    }
+
+    private suspend fun hydrateEqStateFromDataStore() {
+        migrateLegacyEqJsonToDataStoreIfNeeded()
+        val prefs = getApplication<Application>().eqPreferencesDataStore.data.first()
+        _eqEnabled.value = prefs[EqPrefKeys.ENABLED] ?: false
+        _eqPreampDb.value = (prefs[EqPrefKeys.PREAMP] ?: 0f).coerceIn(-15f, 15f)
+        val bands = (0 until 10).map { i ->
+            (prefs[EqPrefKeys.band(i)] ?: 0f).coerceIn(-15f, 15f)
+        }
+        _eqBandGains.value = bands
+        Log.d(
+            "EqPersist",
+            "restore DataStore enabled=${_eqEnabled.value} preamp=${_eqPreampDb.value} bands=$bands"
+        )
+    }
+
+    private suspend fun persistEqToDataStore() {
+        getApplication<Application>().eqPreferencesDataStore.edit { prefs ->
+            prefs[EqPrefKeys.ENABLED] = _eqEnabled.value
+            prefs[EqPrefKeys.PREAMP] = _eqPreampDb.value.coerceIn(-15f, 15f)
+            _eqBandGains.value.forEachIndexed { i, g ->
+                prefs[EqPrefKeys.band(i)] = g.coerceIn(-15f, 15f)
+            }
+        }
+        Log.d(
+            "EqPersist",
+            "save enabled=${_eqEnabled.value} preamp=${_eqPreampDb.value} bands=${_eqBandGains.value}"
+        )
+    }
+
+    private fun applyEqStateToProcessor() {
+        val proc = PlaybackService.eqProcessor ?: return
+        proc.eqEnabled = _eqEnabled.value
+        proc.setPreamp(_eqPreampDb.value)
+        _eqBandGains.value.forEachIndexed { i, g -> proc.setBandGain(i, g) }
+        Log.d(
+            "EqPersist",
+            "apply processor enabled=${_eqEnabled.value} preamp=${_eqPreampDb.value}"
+        )
+    }
+
+    private fun persistEqImmediate() {
+        persistEqJob?.cancel()
+        viewModelScope.launch(Dispatchers.IO) {
+            persistEqToDataStore()
+        }
+    }
+
+    private fun schedulePersistEqDebounced() {
+        persistEqJob?.cancel()
+        persistEqJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(250)
+            persistEqToDataStore()
+        }
+    }
+
+    /** Po zakończeniu przeciągania suwaka — natychmiastowy zapis (bez czekania na debounce). */
+    fun flushEqPersist() {
+        persistEqJob?.cancel()
+        viewModelScope.launch(Dispatchers.IO) {
+            persistEqToDataStore()
+        }
+    }
+
+    private suspend fun loadEqPresetsFromDataStore() {
+        val prefs = getApplication<Application>().eqPreferencesDataStore.data.first()
+        val raw = prefs[EqPrefKeys.PRESETS_JSON].orEmpty()
+        _eqPresets.value = EqPresetJsonCodec.decodeOrEmpty(raw)
+            .sortedBy { it.name.lowercase(Locale.getDefault()) }
+    }
+
+    private suspend fun loadRepeatModeFromDataStore(): Int {
+        val raw = getApplication<Application>().eqPreferencesDataStore.data.first()[EqPrefKeys.REPEAT_MODE]
+            ?: Player.REPEAT_MODE_OFF
+        return when (raw) {
+            Player.REPEAT_MODE_OFF, Player.REPEAT_MODE_ONE, Player.REPEAT_MODE_ALL -> raw
+            else -> Player.REPEAT_MODE_OFF
+        }
+    }
+
+    private fun persistRepeatMode(mode: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            getApplication<Application>().eqPreferencesDataStore.edit { prefs ->
+                prefs[EqPrefKeys.REPEAT_MODE] = mode
+            }
+        }
+    }
+
+    private suspend fun persistPresetsList(list: List<EqPreset>) {
+        val sorted = list.sortedBy { it.name.lowercase(Locale.getDefault()) }
+        val encoded = EqPresetJsonCodec.encode(sorted)
+        getApplication<Application>().eqPreferencesDataStore.edit { prefs ->
+            prefs[EqPrefKeys.PRESETS_JSON] = encoded
+        }
+        _eqPresets.value = sorted
+    }
+
+    suspend fun savePreset(name: String, overwrite: Boolean = false): EqPresetSaveOutcome {
+        return withContext(Dispatchers.IO) {
+            val app = getApplication<Application>()
+            val trimmed = name.trim()
+            if (trimmed.isEmpty()) {
+                return@withContext EqPresetSaveOutcome.Error(
+                    app.getString(R.string.eq_preset_error_empty_name)
+                )
+            }
+            val current = _eqPresets.value
+            val duplicateIndex = current.indexOfFirst { it.name.equals(trimmed, ignoreCase = true) }
+            val isDuplicate = duplicateIndex >= 0
+            if (isDuplicate && !overwrite) {
+                return@withContext EqPresetSaveOutcome.DuplicateRequiresConfirmation
+            }
+            if (!isDuplicate && current.size >= MAX_EQ_PRESETS) {
+                return@withContext EqPresetSaveOutcome.Error(
+                    app.getString(R.string.eq_preset_error_limit)
+                )
+            }
+            val snapshot = EqPreset(
+                name = trimmed,
+                gains = _eqBandGains.value.map { it.coerceIn(-15f, 15f) },
+                enabled = _eqEnabled.value
+            )
+            val newList = if (isDuplicate && overwrite) {
+                current.mapIndexed { idx, p -> if (idx == duplicateIndex) snapshot else p }
+            } else {
+                current + snapshot
+            }.sortedBy { it.name.lowercase(Locale.getDefault()) }
+            persistPresetsList(newList)
+            EqPresetSaveOutcome.Saved
+        }
+    }
+
+    suspend fun loadPreset(name: String) {
+        val preset = _eqPresets.value.firstOrNull { it.name == name } ?: return
+        withContext(Dispatchers.Main.immediate) {
+            _eqEnabled.value = preset.enabled
+            _eqBandGains.value = preset.normalizedBandGains()
+            applyEqStateToProcessor()
+        }
+        withContext(Dispatchers.IO) {
+            persistEqToDataStore()
+        }
+    }
+
+    suspend fun deletePreset(name: String) {
+        withContext(Dispatchers.IO) {
+            val newList = _eqPresets.value.filterNot { it.name == name }
+            persistPresetsList(newList)
+        }
     }
 
     private fun restoreLastPlayback() {
@@ -243,7 +437,14 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                     list
                 }
                 _currentPlaylist.value = audioList
-                val idx = audioList.indexOfFirst { it.first.toString() == state.uri }
+                val idx = try {
+                    val targetId = ContentUris.parseId(uri)
+                    audioList.indexOfFirst { row ->
+                        runCatching { ContentUris.parseId(row.first) == targetId }.getOrDefault(false)
+                    }
+                } catch (_: Exception) {
+                    audioList.indexOfFirst { it.first.toString() == state.uri }
+                }
                 _currentIndex.value = if (idx >= 0) idx else 0
                 val mediaItem = MediaItem.fromUri(uri)
                 player.setMediaItem(mediaItem)
@@ -296,23 +497,54 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         lastSeekAtMs = System.currentTimeMillis()
     }
 
+    /** Porównanie z aktualnym utworem (content URI bywa różnie znormalizowany). */
+    fun isCurrentTrackUri(uri: Uri): Boolean {
+        val cur = _selectedUri.value ?: return false
+        return urisSameAudioTrack(cur, uri)
+    }
+
+    /** Ten sam plik w MediaStore mimo różnych reprezentacji URI (np. EXTERNAL vs VOLUME_EXTERNAL). */
+    private fun urisSameAudioTrack(a: Uri, b: Uri): Boolean {
+        if (a == b) return true
+        val sa = a.toString()
+        val sb = b.toString()
+        if (sa == sb) return true
+        return try {
+            val idA = ContentUris.parseId(a)
+            val idB = ContentUris.parseId(b)
+            idA == idB && idA >= 0L
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun selectFile(uri: Uri, displayName: String?, autoplay: Boolean = true) {
+        if (isCurrentTrackUri(uri)) {
+            Log.d("R3Trace", "PlayerViewModel.selectFile SKIP (same track): uri=$uri")
+            return
+        }
         selectFileInternal(uri, displayName ?: defaultTrackName(), autoplay)
     }
 
     fun selectFileWithPlaylist(uri: Uri, displayName: String?, playlist: List<Pair<Uri, String>>, index: Int) {
+        if (isCurrentTrackUri(uri)) {
+            Log.d("R3Trace", "PlayerViewModel.selectFileWithPlaylist SKIP (same track): uri=$uri")
+            return
+        }
         _currentPlaylist.value = playlist
         _currentIndex.value = index.coerceIn(0, playlist.size - 1)
         selectFileInternal(uri, displayName ?: defaultTrackName(), autoplay = true)
     }
 
     private fun selectFileInternal(uri: Uri, name: String, autoplay: Boolean) {
+        Log.d(
+            "R3Trace",
+            "PlayerViewModel.selectFileInternal CALLED: uri=$uri, stack=${Exception().stackTraceToString().take(500)}"
+        )
         player.stop()
         _selectedUri.value = uri
         _fileName.value = name
         _metadata.value = null
-        _masterData.value = null
-        _masterDataError.value = null
         playbackRepo.savePlaybackState(uri.toString(), 0L, name)
         viewModelScope.launch {
             _metadata.value = withContext(Dispatchers.IO) { extractMetadata(uri) }
@@ -370,34 +602,10 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         val app = getApplication<Application>()
-        Log.d("MasterDataAnalyzer", "loadMasterData: uri=$uri")
-        _masterDataLoading.value = true
-        _masterData.value = null
-        _masterDataError.value = null
-
+        Log.d("MasterDataAnalyzer", "loadMasterData: uri=$uri (repository)")
         val durationMs = player.duration.coerceAtLeast(0L)
-        if (durationMs > 10 * 60 * 1000L) {
-            _masterDataLoading.value = false
-            _masterDataError.value = getApplication<Application>().getString(R.string.master_data_track_too_long)
-            return
-        }
-
-        viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    try {
-                        MasterDataAnalyzer.analyze(app, uri)
-                    } catch (t: Throwable) {
-                        null
-                    }
-                }
-                _masterData.value = result
-            } catch (t: Throwable) {
-                _masterData.value = null
-            } finally {
-                _masterDataLoading.value = false
-            }
-        }
+        val tooLong = app.getString(R.string.master_data_track_too_long)
+        MasterDataRepository.requestAnalysis(app, uri, durationMs, tooLong)
     }
 
     /** Gdy plik został usunięty z urządzenia (np. z listy Utwory). */
@@ -410,8 +618,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         _selectedUri.value = null
         _fileName.value = null
         _metadata.value = null
-        _masterData.value = null
-        _masterDataError.value = null
+        MasterDataRepository.remove(uri)
         _currentPlaylist.value = emptyList()
         _currentIndex.value = 0
         _currentPosition.value = 0
@@ -529,14 +736,20 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun cycleRepeatMode() {
         val next = when (_repeatMode.value) {
-            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ONE
-            Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
+            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
             else -> Player.REPEAT_MODE_OFF
         }
         _repeatMode.value = next
         player.repeatMode = next
+        persistRepeatMode(next)
         val app = getApplication<Application>()
-        val msg = if (next == Player.REPEAT_MODE_OFF) app.getString(R.string.toast_repeat_off) else app.getString(R.string.toast_repeat_on)
+        val msg = when (next) {
+            Player.REPEAT_MODE_OFF -> app.getString(R.string.repeat_off)
+            Player.REPEAT_MODE_ALL -> app.getString(R.string.repeat_all)
+            Player.REPEAT_MODE_ONE -> app.getString(R.string.repeat_one)
+            else -> app.getString(R.string.repeat_off)
+        }
         Toast.makeText(app, msg, Toast.LENGTH_SHORT).show()
     }
 
@@ -553,7 +766,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setEqEnabled(enabled: Boolean) {
         _eqEnabled.value = enabled
-        eqProcessor.eqEnabled = enabled
+        PlaybackService.eqProcessor?.eqEnabled = enabled
+        persistEqImmediate()
     }
 
     fun setEqBandGain(bandIndex: Int, gainDb: Float) {
@@ -561,24 +775,30 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             val newGains = _eqBandGains.value.toMutableList()
             newGains[bandIndex] = gainDb.coerceIn(-15f, 15f)
             _eqBandGains.value = newGains
-            eqProcessor.setBandGain(bandIndex, gainDb)
-            saveEqState()
+            PlaybackService.eqProcessor?.setBandGain(bandIndex, gainDb)
+            schedulePersistEqDebounced()
         }
+    }
+
+    fun resetEqBand(index: Int) {
+        if (index !in 0..9) return
+        setEqBandGain(index, 0f)
+        flushEqPersist()
     }
 
     fun setEqPreamp(gainDb: Float) {
         val clamped = gainDb.coerceIn(-15f, 15f)
         _eqPreampDb.value = clamped
-        eqProcessor.setPreamp(clamped)
-        saveEqState()
+        PlaybackService.eqProcessor?.setPreamp(clamped)
+        schedulePersistEqDebounced()
     }
 
     fun resetEq() {
         _eqBandGains.value = List(10) { 0f }
         _eqPreampDb.value = 0f
-        for (i in 0..9) eqProcessor.setBandGain(i, 0f)
-        eqProcessor.setPreamp(0f)
-        saveEqState()
+        for (i in 0..9) PlaybackService.eqProcessor?.setBandGain(i, 0f)
+        PlaybackService.eqProcessor?.setPreamp(0f)
+        persistEqImmediate()
     }
 
     override fun onCleared() {
@@ -590,5 +810,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             playbackRepo.savePlaybackState(uri, player.currentPosition, _fileName.value ?: defaultTrackName())
         }
         super.onCleared()
+    }
+
+    companion object {
+        private const val MAX_EQ_PRESETS = 20
     }
 }

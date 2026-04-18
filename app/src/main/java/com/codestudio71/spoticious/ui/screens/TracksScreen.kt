@@ -3,6 +3,7 @@ package com.codestudio71.spoticious.ui.screens
 import android.app.Activity
 import android.app.Application
 import android.os.Build
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -431,15 +432,22 @@ fun TracksScreen(
                         val index = filteredFiles.indexOf(file)
                         TrackRow(
                             file = file,
-                            isSelected = selectedUri == file.uri,
+                            isSelected = playerViewModel.isCurrentTrackUri(file.uri),
                             onClick = {
-                                val playlist = filteredFiles.map { f -> f.uri to f.displayName }
-                                playerViewModel.selectFileWithPlaylist(
-                                    file.uri,
-                                    file.displayName,
-                                    playlist,
-                                    index
+                                val isCurrent = playerViewModel.isCurrentTrackUri(file.uri)
+                                Log.d(
+                                    "R3Trace",
+                                    "TracksScreen onClick: uri=${file.uri}, selected=${playerViewModel.selectedUri.value}, isCurrent=$isCurrent"
                                 )
+                                if (!isCurrent) {
+                                    val playlist = filteredFiles.map { f -> f.uri to f.displayName }
+                                    playerViewModel.selectFileWithPlaylist(
+                                        file.uri,
+                                        file.displayName,
+                                        playlist,
+                                        index
+                                    )
+                                }
                                 onOpenFullPlayer()
                             },
                             onLongClick = {
