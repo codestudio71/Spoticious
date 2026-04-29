@@ -5,7 +5,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,7 +50,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.draw.shadow
@@ -84,6 +83,9 @@ fun EqScreen(
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val bandResetInteractionSources = remember {
+        List(EqualizerAudioProcessor.BAND_FREQUENCIES_HZ.size) { MutableInteractionSource() }
+    }
     var presetsMenuExpanded by remember { mutableStateOf(false) }
     var presetNameInput by remember { mutableStateOf("") }
     var deleteCandidate by remember { mutableStateOf<String?>(null) }
@@ -415,15 +417,6 @@ fun EqScreen(
                 )
             }
 
-            Text(
-                text = stringResource(R.string.eq_band_hold_to_reset),
-                color = Color.White.copy(alpha = 0.45f),
-                fontSize = 10.sp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 4.dp)
-            )
-
             EqualizerAudioProcessor.BAND_FREQUENCIES_HZ.forEachIndexed { index, freqHz ->
                 Row(
                     modifier = Modifier
@@ -442,16 +435,7 @@ fun EqScreen(
                         onValueChange = { viewModel.setEqBandGain(index, it * 30f - 15f) },
                         onValueChangeFinished = { viewModel.flushEqPersist() },
                         valueRange = 0f..1f,
-                        modifier = Modifier
-                            .weight(1f)
-                            .pointerInput(index) {
-                                detectTapGestures(
-                                    onLongPress = {
-                                        viewModel.resetEqBand(index)
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    }
-                                )
-                            },
+                        modifier = Modifier.weight(1f),
                         colors = SliderDefaults.colors(
                             thumbColor = Color(0xFFFF4DB8),
                             activeTrackColor = Color(0xFF00E5FF),
@@ -474,13 +458,29 @@ fun EqScreen(
                             )
                         }
                     )
-                    Text(
-                        text = formatDb(bandGains.getOrElse(index) { 0f }),
-                        color = Color.White,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.width(52.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .widthIn(min = 48.dp)
+                            .combinedClickable(
+                                interactionSource = bandResetInteractionSources[index],
+                                indication = null,
+                                onClick = { },
+                                onClickLabel = stringResource(R.string.eq_band_reset),
+                                onDoubleClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    viewModel.resetEqBand(index)
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = formatDb(bandGains.getOrElse(index) { 0f }),
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.widthIn(min = 48.dp)
+                        )
+                    }
                 }
             }
         }

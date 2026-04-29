@@ -43,6 +43,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import android.content.ContentUris
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -103,7 +104,12 @@ fun FullPlayerScreen(
     val masterDataProgress by viewModel.masterDataProgress.collectAsState()
     val selectedUri by viewModel.selectedUri.collectAsState()
     var extraExpanded by remember { mutableStateOf(false) }
-    var masterDataEnabled by rememberSaveable(selectedUri?.toString()) { mutableStateOf(false) }
+    val masterDataSaveKey = remember(selectedUri) {
+        selectedUri?.let { u ->
+            runCatching { "id:${ContentUris.parseId(u)}" }.getOrElse { u.toString() }
+        }.orEmpty()
+    }
+    var masterDataEnabled by rememberSaveable(masterDataSaveKey) { mutableStateOf(false) }
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     val sleepTimerRemaining by viewModel.sleepTimerRemainingMinutes.collectAsState()
 

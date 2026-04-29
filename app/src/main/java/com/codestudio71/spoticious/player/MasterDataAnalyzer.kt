@@ -45,18 +45,22 @@ object MasterDataAnalyzer {
     private const val K_HIGHPASS_A1 = -1.99004745483398
     private const val K_HIGHPASS_A2 = 0.99007225036621
 
-    fun analyze(context: Context, uri: Uri): MasterData? {
+    fun analyze(context: Context, uri: Uri, onProgress: (Float) -> Unit = {}): MasterData? {
         return try {
             Log.d(TAG, "analyze: uri=$uri")
+            onProgress(0f)
             try {
-                val wavResult = decodeWavStreaming(context, uri)
+                val wavResult = decodeWavStreaming(context, uri, onProgress)
                 if (wavResult != null) {
                     Log.d(TAG, "analyze: WAV streaming succeeded")
+                    onProgress(1f)
                     return wavResult
                 }
                 Log.d(TAG, "analyze: WAV failed, trying MediaCodec streaming")
-                val codecResult = decodeWithMediaCodecStreaming(context, uri)
+                onProgress(0f)
+                val codecResult = decodeWithMediaCodecStreaming(context, uri, onProgress)
                 if (codecResult != null) Log.d(TAG, "analyze: MediaCodec streaming succeeded")
+                onProgress(1f)
                 codecResult
             } catch (e: OutOfMemoryError) {
                 Log.e(TAG, "OOM - file too large")
@@ -286,7 +290,7 @@ object MasterDataAnalyzer {
         }
     }
 
-    private fun decodeWavStreaming(context: Context, uri: Uri): MasterData? {
+    private fun decodeWavStreaming(context: Context, uri: Uri, onProgress: (Float) -> Unit): MasterData? {
         return try {
             context.contentResolver.openInputStream(uri)?.use { input ->
                 val header = ByteArray(12)
@@ -441,6 +445,10 @@ object MasterDataAnalyzer {
                         else -> return null
                     }
                     processor.processChunk(chunkFloats)
+                    if (dataSize > 0L) {
+                        val done = (dataSize - remaining).toFloat() / dataSize.toFloat()
+                        onProgress(done.coerceIn(0f, 0.99f))
+                    }
                 }
 
                 val (blocks, peak, clips) = processor.finish()
@@ -452,7 +460,7 @@ object MasterDataAnalyzer {
         }
     }
 
-    private fun decodeWithMediaCodecStreaming(context: Context, uri: Uri): MasterData? {
+    private fun decodeWithMediaCodecStreaming(context: Context, uri: Uri, onProgress: (Float) -> Unit): MasterData? {
         var extractor: MediaExtractor? = null
         var decoder: MediaCodec? = null
 
@@ -589,6 +597,10 @@ object MasterDataAnalyzer {
                                         processor.processChunk(if (w == chunk.size) chunk else chunk.copyOf(w))
                                     }
                                     offset += chunkShorts
+                                }
+                                if (totalEstInterleaved != Long.MAX_VALUE && totalEstInterleaved > 0L) {
+                                    val eff = globalOutputSampleIndex.coerceAtMost(totalEstInterleaved)
+                                    onProgress((eff.toFloat() / totalEstInterleaved).coerceIn(0f, 0.99f))
                                 }
                             }
                         }

@@ -444,13 +444,16 @@ fun PlaylistScreen(
                                             .combinedClickable(
                                                 onClick = {
                                                     val pl = selectedPlaylist ?: return@combinedClickable
-                                                    val uris = pl.tracks.map { Uri.parse(it.first) to it.second }
-                                                    viewModel.selectFileWithPlaylist(
-                                                        Uri.parse(track.first),
-                                                        track.second,
-                                                        uris,
-                                                        idx
-                                                    )
+                                                    val trackUri = Uri.parse(track.first)
+                                                    if (!viewModel.isCurrentTrackUri(trackUri)) {
+                                                        val uris = pl.tracks.map { Uri.parse(it.first) to it.second }
+                                                        viewModel.selectFileWithPlaylist(
+                                                            trackUri,
+                                                            track.second,
+                                                            uris,
+                                                            idx
+                                                        )
+                                                    }
                                                 },
                                                 onLongClick = { trackMenuExpanded = true }
                                             ),

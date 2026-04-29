@@ -3,6 +3,7 @@ package com.codestudio71.spoticious.player
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.app.Service
 import android.content.Intent
 import android.os.Build
@@ -178,7 +179,7 @@ class PlaybackService : Service() {
 
     private fun buildNotification(): android.app.Notification {
         val openIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val openPendingIntent = PendingIntent.getActivity(
             this, 0, openIntent,
@@ -223,6 +224,7 @@ class PlaybackService : Service() {
             .setContentTitle(getString(R.string.app_name))
             .setContentText(if (isPlaying) getString(R.string.notif_playing) else getString(R.string.notif_paused))
             .setSmallIcon(android.R.drawable.ic_media_play)
+            .setOngoing(true)
             .setContentIntent(openPendingIntent)
             .setDeleteIntent(deleteIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -249,6 +251,17 @@ class PlaybackService : Service() {
     }
 
     companion object {
+        /** Uruchom serwis przed granicą startForeground (API 26+: [Context.startForegroundService]). */
+        fun ensureStarted(context: Context) {
+            val i = Intent(context, PlaybackService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(i)
+            } else {
+                @Suppress("DEPRECATION")
+                context.startService(i)
+            }
+        }
+
         private const val CHANNEL_ID = "spoticious_playback"
         private const val NOTIFICATION_ID = 1
         private const val REQUEST_CODE_STOP = 4

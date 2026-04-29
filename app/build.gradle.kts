@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -11,8 +12,8 @@ android {
         applicationId = "com.codestudio71.spoticious"
         minSdk = 24
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
         resConfigs("pl") // Polski natywnie – tylko values/ (fallback PL)
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -51,6 +52,8 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     // 2.x: prostsze API onMove (bez suspend); 3.x wymaga suspend + LazyListItemInfo
     implementation("sh.calvin.reorderable:reorderable:2.5.1")
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation(libs.exoplayer)
     implementation("androidx.media:media:1.7.1")
     testImplementation(libs.junit)

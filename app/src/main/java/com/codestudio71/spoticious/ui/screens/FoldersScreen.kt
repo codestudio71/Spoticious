@@ -212,14 +212,16 @@ fun FoldersScreen(
                                 }
                             },
                             onFileClick = { file ->
-                                val playlist = allFilteredFiles.map { f -> f.uri to f.displayName }
-                                val index = allFilteredFiles.indexOf(file)
-                                playerViewModel.selectFileWithPlaylist(
-                                    file.uri,
-                                    file.displayName,
-                                    playlist,
-                                    index.coerceAtLeast(0)
-                                )
+                                if (!playerViewModel.isCurrentTrackUri(file.uri)) {
+                                    val playlist = allFilteredFiles.map { f -> f.uri to f.displayName }
+                                    val index = allFilteredFiles.indexOf(file)
+                                    playerViewModel.selectFileWithPlaylist(
+                                        file.uri,
+                                        file.displayName,
+                                        playlist,
+                                        index.coerceAtLeast(0)
+                                    )
+                                }
                             }
                         )
                     }

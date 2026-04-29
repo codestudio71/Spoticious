@@ -145,7 +145,7 @@
     <string name="eq_off">OFF</string>
     <string name="eq_pre">Pre</string>
     <string name="eq_reset">RESET ALL</string>
-    <string name="eq_band_hold_to_reset">Przytrzymaj suwak pasma, by zresetować do 0 dB</string>
+    <string name="eq_band_reset">Reset pasma</string>
     <string name="eq_presets">Presety</string>
     <string name="eq_preset_save">Zapisz preset</string>
     <string name="eq_preset_name_hint">Nazwa presetu</string>

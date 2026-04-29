@@ -3,6 +3,7 @@ package com.codestudio71.spoticious
 import android.content.Intent
 import android.os.Bundle
 import com.codestudio71.spoticious.player.PendingExternalAudio
+import com.codestudio71.spoticious.player.PlaybackService
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -21,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import com.codestudio71.spoticious.player.PlayerViewModel
-import com.codestudio71.spoticious.player.PlaybackService
 import com.codestudio71.spoticious.ui.screens.MainScreen
 import com.codestudio71.spoticious.ui.screens.SplashScreen
 import com.codestudio71.spoticious.ui.theme.SpoticiousTheme
@@ -30,15 +30,18 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         PendingExternalAudio.enqueueFromIntentIfViewAction(intent)
-        startService(Intent(this, PlaybackService::class.java))
+        PlaybackService.ensureStarted(this)
         enableEdgeToEdge()
         setContent {
             SpoticiousTheme {
-                var showMenu by remember { mutableStateOf(false) }
-                val menuAlpha = remember { Animatable(0f) }
+                val resumeWithPlayer = PlaybackService.player?.currentMediaItem != null
+                var showMenu by remember { mutableStateOf(resumeWithPlayer) }
+                val menuAlpha = remember {
+                    Animatable(if (resumeWithPlayer) 1f else 0f)
+                }
 
                 LaunchedEffect(showMenu) {
-                    if (showMenu) {
+                    if (showMenu && menuAlpha.value < 1f) {
                         menuAlpha.animateTo(
                             targetValue = 1f,
                             animationSpec = tween(1500, easing = LinearEasing)
@@ -67,8 +70,10 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.action == Intent.ACTION_VIEW && intent.data != null) {
-            ViewModelProvider(this)[PlayerViewModel::class.java].playExternalUri(intent.data!!)
+        when {
+            intent.action == Intent.ACTION_VIEW && intent.data != null ->
+                ViewModelProvider(this)[PlayerViewModel::class.java].playExternalUri(intent.data!!)
+            else -> { /* np. powrót z notyfikacji — bez cold-init UI */ }
         }
     }
 }

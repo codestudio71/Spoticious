@@ -79,19 +79,19 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     /** Master Data z [MasterDataRepository] — analiza nie ginie przy opuszczeniu FullPlayer. */
     val masterData: StateFlow<MasterData?> = combine(_selectedUri, MasterDataRepository.entries) { uri, entries ->
-        uri?.let { u -> entries[u.toString()]?.data }
+        MasterDataRepository.entryFor(uri, entries)?.data
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val masterDataLoading: StateFlow<Boolean> = combine(_selectedUri, MasterDataRepository.entries) { uri, entries ->
-        uri?.let { u -> entries[u.toString()]?.loading } ?: false
+        MasterDataRepository.entryFor(uri, entries)?.loading == true
     }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     val masterDataError: StateFlow<String?> = combine(_selectedUri, MasterDataRepository.entries) { uri, entries ->
-        uri?.let { u -> entries[u.toString()]?.error }
+        MasterDataRepository.entryFor(uri, entries)?.error
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val masterDataProgress: StateFlow<Float> = combine(_selectedUri, MasterDataRepository.entries) { uri, entries ->
-        uri?.let { u -> entries[u.toString()]?.progress ?: 0f } ?: 0f
+        MasterDataRepository.entryFor(uri, entries)?.progress ?: 0f
     }.stateIn(viewModelScope, SharingStarted.Eagerly, 0f)
 
     private val _eqEnabled = MutableStateFlow(false)
@@ -153,40 +153,43 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                         _duration.value = player.duration.coerceAtLeast(0L)
                     }
                     if (playbackState == Player.STATE_ENDED && _currentPlaylist.value.isNotEmpty()) {
+                        val pl = _currentPlaylist.value
+                        val currentIndex = _currentIndex.value
+                        val lastIndex = pl.lastIndex
+                        Log.d(
+                            "RepeatMode",
+                            "State: ${_repeatMode.value}, player.mode=${player.repeatMode}, " +
+                                "currentIndex=$currentIndex, lastIndex=$lastIndex"
+                        )
                         when (_repeatMode.value) {
+                            Player.REPEAT_MODE_OFF -> {
+                                if (_shuffleEnabled.value || currentIndex < lastIndex) {
+                                    skipToNext()
+                                } else {
+                                    player.pause()
+                                    _isPlaying.value = false
+                                }
+                            }
                             Player.REPEAT_MODE_ONE -> {
                                 player.seekTo(0)
                                 player.play()
-                                _currentPosition.value = 0
+                                _currentPosition.value = 0L
+                                _isPlaying.value = true
                             }
                             Player.REPEAT_MODE_ALL -> {
-                                val pl = _currentPlaylist.value
-                                if (pl.isNotEmpty()) {
-                                    val idx = _currentIndex.value
-                                    if (idx >= pl.lastIndex) {
-                                        _currentIndex.value = 0
-                                        val (u, n) = pl[0]
-                                        selectFileInternal(u, n, autoplay = true)
-                                    } else {
-                                        skipToNext()
-                                    }
-                                }
-                            }
-                            else -> {
-                                if (_shuffleEnabled.value) {
+                                if (currentIndex < lastIndex) {
                                     skipToNext()
                                 } else {
-                                    val lastIndex = _currentPlaylist.value.size - 1
-                                    if (_currentIndex.value < lastIndex) {
-                                        skipToNext()
-                                    }
+                                    _currentIndex.value = 0
+                                    val (u, n) = pl[0]
+                                    selectFileInternal(u, n, autoplay = true)
                                 }
                             }
                         }
                     }
                 }
             })
-            player.repeatMode = _repeatMode.value
+            applyRepeatModeToPlayer()
             applyEqStateToProcessor()
             val externalUri = PendingExternalAudio.poll()
             if (externalUri != null) {
@@ -452,6 +455,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 player.seekTo(state.position.coerceAtLeast(0L))
                 _currentPosition.value = state.position
                 _duration.value = player.duration.coerceAtLeast(0L)
+                applyRepeatModeToPlayer()
                 viewModelScope.launch {
                     _metadata.value = withContext(Dispatchers.IO) { extractMetadata(uri) }
                 }
@@ -536,6 +540,17 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         selectFileInternal(uri, displayName ?: defaultTrackName(), autoplay = true)
     }
 
+    /**
+     * Jedna pozycja w ExoPlayer: REPEAT_MODE_ALL na playerze powtarza ten sam [MediaItem] (jak ONE).
+     * REPEAT_ALL obsługujemy przy [Player.STATE_ENDED]; na playerze tylko OFF albo ONE.
+     */
+    private fun applyRepeatModeToPlayer() {
+        player.repeatMode = when (_repeatMode.value) {
+            Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ONE
+            else -> Player.REPEAT_MODE_OFF
+        }
+    }
+
     private fun selectFileInternal(uri: Uri, name: String, autoplay: Boolean) {
         Log.d(
             "R3Trace",
@@ -561,6 +576,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             _currentPosition.value = 0
             _isPlaying.value = false
         }
+        applyRepeatModeToPlayer()
     }
 
     private fun extractMetadata(uri: Uri): AudioMetadata? {
@@ -741,7 +757,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             else -> Player.REPEAT_MODE_OFF
         }
         _repeatMode.value = next
-        player.repeatMode = next
+        applyRepeatModeToPlayer()
         persistRepeatMode(next)
         val app = getApplication<Application>()
         val msg = when (next) {

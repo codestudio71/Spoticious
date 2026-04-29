@@ -145,7 +145,7 @@
     <string name="eq_off">OFF</string>
     <string name="eq_pre">Pre</string>
     <string name="eq_reset">RESET ALL</string>
-    <string name="eq_band_hold_to_reset">Long-press a band slider to reset to 0 dB</string>
+    <string name="eq_band_reset">Reset band</string>
     <string name="eq_presets">Presets</string>
     <string name="eq_preset_save">Save preset</string>
     <string name="eq_preset_name_hint">Preset name</string>
