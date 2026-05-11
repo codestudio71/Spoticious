@@ -45,6 +45,7 @@ import com.codestudio71.spoticious.ui.theme.MiamiPink
 fun ExtraScreen(
     onBack: () -> Unit,
     onPlaylistClick: () -> Unit,
+    onRecordPreviewClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -101,7 +102,8 @@ fun ExtraScreen(
             ExtraCard(
                 icon = Icons.Default.Mic,
                 title = stringResource(R.string.record_preview),
-                subtitle = stringResource(R.string.coming_soon)
+                subtitle = stringResource(R.string.record_preview_subtitle),
+                onClick = onRecordPreviewClick,
             )
             ExtraCard(
                 icon = Icons.Default.PlaylistPlay,

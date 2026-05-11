@@ -81,6 +81,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
     var showFullPlayer by remember { mutableStateOf(false) }
     var showExtraScreen by remember { mutableStateOf(false) }
     var showPlaylistScreen by remember { mutableStateOf(false) }
+    var showRecordPreview by remember { mutableStateOf(false) }
     var searchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var sortMode by remember { mutableStateOf(TrackSortOrder.NAME_ASC) }
@@ -101,7 +102,10 @@ fun MainScreen(modifier: Modifier = Modifier) {
         foldersViewModel.loadAudioFilesIfPermitted()
     }
 
-    BackHandler(enabled = showExtraScreen) { showExtraScreen = false }
+    BackHandler(enabled = showRecordPreview && showExtraScreen) {
+        showRecordPreview = false
+    }
+    BackHandler(enabled = showExtraScreen && !showRecordPreview) { showExtraScreen = false }
     BackHandler(enabled = searchExpanded && !showExtraScreen) {
         searchExpanded = false
         searchQuery = ""
@@ -126,7 +130,11 @@ fun MainScreen(modifier: Modifier = Modifier) {
                         searchExpanded = false
                         searchQuery = ""
                     },
-                    onExtraClick = { showExtraScreen = true },
+                    onExtraClick = {
+                        showRecordPreview = false
+                        showPlaylistScreen = false
+                        showExtraScreen = true
+                    },
                     sortMode = sortMode,
                     onSortModeChange = { sortMode = it },
                     sortMenuExpanded = sortMenuExpanded,
@@ -162,6 +170,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                             selected = isSelected,
                             onClick = {
                                 showExtraScreen = false
+                                showRecordPreview = false
                                 selectedTab = tab
                             },
                             icon = {
@@ -199,16 +208,30 @@ fun MainScreen(modifier: Modifier = Modifier) {
                 .background(MaterialTheme.colorScheme.background)
         ) {
             if (showExtraScreen) {
-                if (showPlaylistScreen) {
-                    PlaylistScreen(
-                        viewModel = playerViewModel,
-                        onBack = { showPlaylistScreen = false }
-                    )
-                } else {
-                    ExtraScreen(
-                        onBack = { showExtraScreen = false },
-                        onPlaylistClick = { showPlaylistScreen = true }
-                    )
+                when {
+                    showRecordPreview ->
+                        RecordPreviewScreen(
+                            onBack = { showRecordPreview = false },
+                        )
+
+                    showPlaylistScreen ->
+                        PlaylistScreen(
+                            viewModel = playerViewModel,
+                            onBack = { showPlaylistScreen = false },
+                        )
+
+                    else ->
+                        ExtraScreen(
+                            onBack = { showExtraScreen = false },
+                            onPlaylistClick = {
+                                showRecordPreview = false
+                                showPlaylistScreen = true
+                            },
+                            onRecordPreviewClick = {
+                                showPlaylistScreen = false
+                                showRecordPreview = true
+                            },
+                        )
                 }
             } else {
                 when (selectedTab) {
