@@ -138,68 +138,88 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     sortMode = sortMode,
                     onSortModeChange = { sortMode = it },
                     sortMenuExpanded = sortMenuExpanded,
-                    onSortMenuExpandedChange = { sortMenuExpanded = it }
+                    onSortMenuExpandedChange = { sortMenuExpanded = it },
                 )
             },
             bottomBar = {
-            Column {
-                MiniPlayer(
-                    viewModel = playerViewModel,
-                    onTapWhenEmpty = { selectedTab = Tab.UTWORY },
-                    onTapWhenPlaying = openFullPlayer
-                )
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ) {
-                    Tab.entries.forEach { tab ->
-                        val isSelected = selectedTab == tab
-                        val selectedColor = when (tab) {
-                            Tab.UTWORY -> Color(0xFF00E5FF)
-                            Tab.FOLDERY -> Color(0xFFFFFFFF)
-                            Tab.EQ -> Color(0xFFFFFFFF)
-                            Tab.RENDER -> Color(0xFFFF4DB8)
-                        }
-                        val unselectedColor = when (tab) {
-                            Tab.UTWORY -> Color(0x4D00E5FF)
-                            Tab.FOLDERY -> Color(0xFF666666)
-                            Tab.EQ -> Color(0xFF666666)
-                            Tab.RENDER -> Color(0x4DFF4DB8)
-                        }
-                        NavigationBarItem(
-                            selected = isSelected,
-                            onClick = {
-                                showExtraScreen = false
-                                showRecordPreview = false
-                                selectedTab = tab
-                            },
-                            icon = {
-                                Icon(
-                                    imageVector = tab.icon,
-                                    contentDescription = stringResource(tab.titleResId),
-                                    tint = if (isSelected) selectedColor else unselectedColor
-                                )
-                            },
-                            label = {
-                                Text(
-                                    text = stringResource(tab.titleResId),
-                                    color = if (isSelected) selectedColor else unselectedColor,
-                                    fontSize = 12.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                )
-                            },
-                            colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = MaterialTheme.colorScheme.surface,
-                                selectedIconColor = selectedColor,
-                                selectedTextColor = selectedColor,
-                                unselectedIconColor = unselectedColor,
-                                unselectedTextColor = unselectedColor
-                            )
+                if (!(showExtraScreen && showRecordPreview)) {
+                    Column {
+                        MiniPlayer(
+                            viewModel = playerViewModel,
+                            onTapWhenEmpty = { selectedTab = Tab.UTWORY },
+                            onTapWhenPlaying = openFullPlayer,
                         )
+                        NavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ) {
+                            Tab.entries.forEach { tab ->
+                                val isSelected = selectedTab == tab
+                                val selectedColor =
+                                    when (tab) {
+                                        Tab.UTWORY -> Color(0xFF00E5FF)
+                                        Tab.FOLDERY -> Color(0xFFFFFFFF)
+                                        Tab.EQ -> Color(0xFFFFFFFF)
+                                        Tab.RENDER -> Color(0xFFFF4DB8)
+                                    }
+                                val unselectedColor =
+                                    when (tab) {
+                                        Tab.UTWORY -> Color(0x4D00E5FF)
+                                        Tab.FOLDERY -> Color(0xFF666666)
+                                        Tab.EQ -> Color(0xFF666666)
+                                        Tab.RENDER -> Color(0x4DFF4DB8)
+                                    }
+                                NavigationBarItem(
+                                    selected = isSelected,
+                                    onClick = {
+                                        showExtraScreen = false
+                                        showRecordPreview = false
+                                        selectedTab = tab
+                                    },
+                                    icon = {
+                                        Icon(
+                                            imageVector = tab.icon,
+                                            contentDescription = stringResource(tab.titleResId),
+                                            tint =
+                                                if (isSelected) {
+                                                    selectedColor
+                                                } else {
+                                                    unselectedColor
+                                                },
+                                        )
+                                    },
+                                    label = {
+                                        Text(
+                                            text = stringResource(tab.titleResId),
+                                            color =
+                                                if (isSelected) {
+                                                    selectedColor
+                                                } else {
+                                                    unselectedColor
+                                                },
+                                            fontSize = 12.sp,
+                                            fontWeight =
+                                                if (isSelected) {
+                                                    FontWeight.Bold
+                                                } else {
+                                                    FontWeight.Normal
+                                                },
+                                        )
+                                    },
+                                    colors =
+                                        NavigationBarItemDefaults.colors(
+                                            indicatorColor = MaterialTheme.colorScheme.surface,
+                                            selectedIconColor = selectedColor,
+                                            selectedTextColor = selectedColor,
+                                            unselectedIconColor = unselectedColor,
+                                            unselectedTextColor = unselectedColor,
+                                        ),
+                                )
+                            }
+                        }
                     }
                 }
-            }
-            }
+            },
         ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -212,6 +232,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     showRecordPreview ->
                         RecordPreviewScreen(
                             onBack = { showRecordPreview = false },
+                            modifier = Modifier.fillMaxSize(),
                         )
 
                     showPlaylistScreen ->

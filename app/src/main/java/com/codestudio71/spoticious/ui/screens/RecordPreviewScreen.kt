@@ -12,10 +12,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -25,7 +25,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FiberManualRecord
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -74,7 +73,6 @@ private val BgGrad =
         Color(0xFF1A0A2E),
         Color(0xFF2D1B4E),
     )
-private val PlaceholderWaveBlue = Color(0xFF2196F3)
 private val RecRed = Color(0xFFFF1744)
 private val DarkOnCyan = Color(0xFF0D0D1A)
 private val AccentDelete = Color(0xFFFF5277)
@@ -167,7 +165,8 @@ fun RecordPreviewScreen(
                 .fillMaxSize()
                 .background(Brush.verticalGradient(BgGrad))
                 .padding(horizontal = 16.dp)
-                .statusBarsPadding(),
+                .statusBarsPadding()
+                .navigationBarsPadding(),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -346,7 +345,6 @@ fun RecordPreviewScreen(
                 Modifier
                     .fillMaxWidth()
                     .weight(1f),
-            contentAlignment = Alignment.Center,
         ) {
             if (isRecording) {
                 Column(
@@ -369,34 +367,6 @@ fun RecordPreviewScreen(
                             peakDbfs = beatPeakDbfs,
                             modifier = Modifier.fillMaxWidth(),
                         )
-                    }
-                }
-            } else {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceEvenly,
-                    modifier = Modifier.fillMaxHeight(),
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        repeat(5) {
-                            Icon(
-                                Icons.Default.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = PlaceholderWaveBlue,
-                                modifier = Modifier.size(48.dp),
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(32.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        repeat(5) {
-                            Icon(
-                                Icons.Default.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = PlaceholderWaveBlue,
-                                modifier = Modifier.size(48.dp),
-                            )
-                        }
                     }
                 }
             }
