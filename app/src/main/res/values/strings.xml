@@ -63,6 +63,7 @@
     <string name="record_headset_body">Playback will come from the phone speaker while the mic records. For cleaner takes, use wired or Bluetooth headphones.</string>
     <string name="record_headset_continue">Record anyway</string>
     <string name="record_switched_usb_mic">Switched to USB mic</string>
+    <string name="record_freestyle_mix_failed">Could not mix beat with vocal. Saved vocal only.</string>
     <string name="coming_soon">Coming soon</string>
     <string name="playlist">Playlist</string>
     <string name="playlist_queue">Playback queue</string>

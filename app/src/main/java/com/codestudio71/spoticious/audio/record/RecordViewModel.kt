@@ -25,7 +25,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
 
 enum class RecordMode {
     Freestyle,
@@ -164,6 +166,9 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     private var hadUsbFamilyConnected = false
 
+    /** Pomija auto-load podglądu po Saved — miks freestyle zastąpi plik i załaduje ręcznie. */
+    private var deferSavedPreviewLoad = false
+
     val pickedInputLabel: StateFlow<String?> =
         combine(deviceRepo.devices, _selectedDeviceId) { devices, id ->
             val match = id?.let { pick -> devices.firstOrNull { it.info.id == pick } }
@@ -195,7 +200,10 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             vocalRecorder.recordingState.collect { st ->
                 when (st) {
-                    is RecordingState.Saved -> savedTakePreviewPlayer.loadFile(st.file)
+                    is RecordingState.Saved -> {
+                        if (deferSavedPreviewLoad) return@collect
+                        savedTakePreviewPlayer.loadFile(st.file)
+                    }
                     else -> savedTakePreviewPlayer.clear()
                 }
             }
@@ -474,10 +482,16 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
                 savedTakePreviewPlayer.clear()
             }
 
+            val freestyleWithBeat =
+                _mode.value == RecordMode.Freestyle && _selectedBeatUri.value != null
             val outFile =
                 File(
                     getApplication<Application>().filesDir,
-                    "Spoticious_rec_${System.currentTimeMillis()}.wav",
+                    if (freestyleWithBeat) {
+                        "Spoticious_freestyle_${System.currentTimeMillis()}.wav"
+                    } else {
+                        "Spoticious_rec_${System.currentTimeMillis()}.wav"
+                    },
                 )
 
             resetWaveformVisualization()
@@ -528,12 +542,47 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     fun stopRecording() {
         viewModelScope.launch {
+            val needsMix =
+                _mode.value == RecordMode.Freestyle && _selectedBeatUri.value != null
+            deferSavedPreviewLoad = needsMix
+
             withContext(Dispatchers.Main) {
                 beatPreviewPlayer.stop()
                 beatPreviewPlayer.releaseVisualizer()
             }
-            withContext(Dispatchers.IO) {
-                vocalRecorder.stop(null)
+
+            val app = getApplication<Application>()
+            val beatUri = _selectedBeatUri.value
+            try {
+                val vocalFile =
+                    withContext(Dispatchers.IO) {
+                        suspendCancellableCoroutine { cont ->
+                            vocalRecorder.stop { file -> cont.resume(file) }
+                        }
+                    }
+                if (vocalFile != null && needsMix && beatUri != null) {
+                    val mixed =
+                        withContext(Dispatchers.IO) {
+                            FreestyleMixdown.mixInPlace(
+                                context = app,
+                                vocalWav = vocalFile,
+                                beatUri = beatUri,
+                                targetSampleRate = SAMPLE_RATE_DEFAULT,
+                            )
+                        }
+                    if (!mixed) {
+                        Toast.makeText(
+                            app,
+                            app.getString(R.string.record_freestyle_mix_failed),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                    withContext(Dispatchers.Main) {
+                        savedTakePreviewPlayer.loadFile(vocalFile)
+                    }
+                }
+            } finally {
+                deferSavedPreviewLoad = false
             }
             resetWaveformVisualization()
         }

@@ -63,6 +63,7 @@
     <string name="record_headset_body">Bit będzie leciał z głośnika, a mikrofon jednocześnie nagrywa. Czystszy dźwięk zazwyczaj ze słuchawkami przewodowymi lub Bluetooth.</string>
     <string name="record_headset_continue">Nagraj mimo to</string>
     <string name="record_switched_usb_mic">Przełączono na mikrofon USB</string>
+    <string name="record_freestyle_mix_failed">Nie udało się zmiksować bitu z wokalem. Zapisano sam głos.</string>
     <string name="coming_soon">Wkrótce</string>
     <string name="playlist">Playlista</string>
     <string name="playlist_queue">Kolejka odtwarzania</string>
