@@ -49,6 +49,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     private val beatPreviewPlayer = BeatPreviewPlayer(application)
     private val savedTakePreviewPlayer = SavedTakePreviewPlayer(application)
     private val deviceRepo = RecordingDeviceRepository(application)
+    private val outputDeviceRepo = BeatOutputDeviceRepository(application)
     private val waveformAnalyzer = WaveformAnalyzer()
 
     private val waveformBufferLock = Any()
@@ -107,6 +108,28 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     val inputDevices: StateFlow<List<InputDeviceOption>> = deviceRepo.devices
 
+    val outputDevices: StateFlow<List<OutputDeviceOption>> = outputDeviceRepo.devices
+
+    private val _selectedOutputDevice = MutableStateFlow<AudioDeviceInfo?>(null)
+    val selectedOutputDevice: StateFlow<AudioDeviceInfo?> = _selectedOutputDevice.asStateFlow()
+
+    val pickedOutputLabel: StateFlow<String?> =
+        combine(outputDeviceRepo.devices, _selectedOutputDevice) { devices, selected ->
+            selected?.let { sel ->
+                devices.firstOrNull { it.info.id == sel.id }?.label
+                    ?: run {
+                        val prod =
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                sel.productName?.toString()?.trim().orEmpty()
+                            } else {
+                                ""
+                            }
+                        prod.ifBlank { null }
+                    }
+            }
+        }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     val recordingState: StateFlow<RecordingState> = vocalRecorder.recordingState
 
     val beatPositionMs: StateFlow<Long> = beatPreviewPlayer.positionMs
@@ -150,6 +173,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         deviceRepo.start()
+        outputDeviceRepo.start()
 
         vocalRecorder.onWaveformFrame = { pcm16, sampleCount ->
             val frame = waveformAnalyzer.analyze(pcm16, 0, sampleCount)
@@ -162,6 +186,10 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
         viewModelScope.launch {
             deviceRepo.devices.collect { list -> onInputDevicesChanged(list) }
+        }
+
+        viewModelScope.launch {
+            outputDeviceRepo.devices.collect { list -> onOutputDevicesChanged(list) }
         }
 
         viewModelScope.launch {
@@ -185,6 +213,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             _selectedDeviceId.value = RecordingDeviceRepository.defaultInputDeviceId(list)
         }
         hadUsbFamilyConnected = RecordingDeviceRepository.listHasUsbFamily(list)
+        refreshDefaultOutputDevice()
     }
 
     /** Wywołaj przy opuszczeniu Record Preview — znów można stosować pełną automatykę przy następnym wejściu. */
@@ -258,6 +287,24 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         savedTakePreviewPlayer.destroy()
         vocalRecorder.release()
         deviceRepo.stop()
+        outputDeviceRepo.stop()
+    }
+
+    fun setOutputDevice(device: AudioDeviceInfo?) {
+        _selectedOutputDevice.value = device
+        beatPreviewPlayer.setPreferredOutputDevice(device)
+    }
+
+    private fun refreshDefaultOutputDevice() {
+        val list = outputDeviceRepo.devices.value
+        setOutputDevice(BeatOutputDeviceRepository.defaultOutputDevice(list))
+    }
+
+    private fun onOutputDevicesChanged(list: List<OutputDeviceOption>) {
+        if (!recordPreviewScreenActive) return
+        val selected = _selectedOutputDevice.value
+        if (selected != null && list.any { it.info.id == selected.id }) return
+        setOutputDevice(BeatOutputDeviceRepository.defaultOutputDevice(list))
     }
 
     fun toggleSavedTakePreview() {
@@ -281,6 +328,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     fun pickBeat(uri: Uri) {
         _selectedBeatUri.value = uri
+        beatPreviewPlayer.setPreferredOutputDevice(_selectedOutputDevice.value)
         beatPreviewPlayer.loadBeat(uri)
         beatPreviewPlayer.seekToStart()
         beatPreviewPlayer.pause()
@@ -459,6 +507,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
                 val beatUri = _selectedBeatUri.value
                 if (beatUri != null) {
                     withContext(Dispatchers.Main) {
+                        beatPreviewPlayer.setPreferredOutputDevice(_selectedOutputDevice.value)
                         beatPreviewPlayer.loadBeat(beatUri)
                         beatPreviewPlayer.seekToStart()
                         beatPreviewPlayer.play()

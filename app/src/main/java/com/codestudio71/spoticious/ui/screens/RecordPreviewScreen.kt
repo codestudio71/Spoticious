@@ -1,6 +1,7 @@
 package com.codestudio71.spoticious.ui.screens
 
 import android.Manifest
+import android.media.AudioDeviceInfo
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,7 +28,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.Headset
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
@@ -62,6 +65,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -110,6 +114,9 @@ fun RecordPreviewScreen(
     val beatName by viewModel.beatLabel.collectAsState()
     val inputDevices by viewModel.inputDevices.collectAsState()
     val pickedLabel by viewModel.pickedInputLabel.collectAsState()
+    val outputDevices by viewModel.outputDevices.collectAsState()
+    val pickedOutputLabel by viewModel.pickedOutputLabel.collectAsState()
+    val selectedOutputDevice by viewModel.selectedOutputDevice.collectAsState()
 
     val micWaveform by viewModel.micWaveform.collectAsState()
     val beatWaveform by viewModel.beatWaveform.collectAsState()
@@ -123,6 +130,7 @@ fun RecordPreviewScreen(
     val savedTakePlaying by viewModel.savedTakeIsPlaying.collectAsState()
 
     var deviceMenu by remember { mutableStateOf(false) }
+    var outputDeviceMenu by remember { mutableStateOf(false) }
     var headsetDialog by remember { mutableStateOf(false) }
     var skipHeadsetAdvice by remember { mutableStateOf(false) }
     var deleteDialog by remember { mutableStateOf(false) }
@@ -176,6 +184,20 @@ fun RecordPreviewScreen(
             ?.takeIf { it.isNotBlank() }
             ?: pickedLabel
             ?: "—"
+
+    val selectedOutputName =
+        pickedOutputLabel
+            ?.substringBefore(" · ")
+            ?.takeIf { it.isNotBlank() }
+            ?: pickedOutputLabel
+            ?: "—"
+
+    val outputIcon =
+        beatOutputIcon(
+            selectedOutputDevice?.type
+                ?: outputDevices.firstOrNull()?.info?.type
+                ?: AudioDeviceInfo.TYPE_BUILTIN_SPEAKER,
+        )
 
     val toggleRecording: () -> Unit = {
         when (recState) {
@@ -328,6 +350,76 @@ fun RecordPreviewScreen(
                                     deviceMenu = false
                                 },
                             )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (isFreestyle) {
+            Spacer(Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+                border = BorderStroke(1.dp, CyanUi.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            outputIcon,
+                            contentDescription = null,
+                            tint = CyanUi,
+                            modifier = Modifier.padding(end = 8.dp),
+                        )
+                        Text(
+                            stringResource(R.string.record_output_beat),
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                    Text(
+                        selectedOutputName,
+                        color = Color.Gray,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Box(Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = { outputDeviceMenu = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            border = BorderStroke(1.dp, CyanUi),
+                            colors =
+                                ButtonDefaults.outlinedButtonColors(contentColor = CyanUi),
+                        ) {
+                            Text(stringResource(R.string.record_choose_output))
+                        }
+                        DropdownMenu(
+                            expanded = outputDeviceMenu,
+                            onDismissRequest = { outputDeviceMenu = false },
+                            modifier = Modifier.background(Color(0xFF1A1F26)),
+                        ) {
+                            outputDevices.forEach { opt ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                beatOutputIcon(opt.info.type),
+                                                contentDescription = null,
+                                                tint = CyanUi,
+                                                modifier = Modifier.padding(end = 8.dp),
+                                            )
+                                            Text(opt.label, color = Color.White)
+                                        }
+                                    },
+                                    onClick = {
+                                        viewModel.setOutputDevice(opt.info)
+                                        outputDeviceMenu = false
+                                    },
+                                )
+                            }
                         }
                     }
                 }
@@ -623,6 +715,13 @@ fun RecordPreviewScreen(
         )
     }
 }
+
+private fun beatOutputIcon(type: Int): ImageVector =
+    if (type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
+        Icons.Default.VolumeUp
+    } else {
+        Icons.Default.Headset
+    }
 
 private fun hasAudioPermission(context: android.content.Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==

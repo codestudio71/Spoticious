@@ -2,7 +2,9 @@ package com.codestudio71.spoticious.audio.record
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.media.AudioDeviceInfo
 import android.media.audiofx.Visualizer
+import android.os.Build
 import android.net.Uri
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.ExoPlayer
@@ -27,6 +29,7 @@ class BeatPreviewPlayer(context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var progressJob: Job? = null
     private var visualizer: Visualizer? = null
+    private var preferredOutputDevice: AudioDeviceInfo? = null
 
     private val player: ExoPlayer =
         ExoPlayer.Builder(appContext).build().apply {
@@ -147,13 +150,28 @@ class BeatPreviewPlayer(context: Context) {
         return if (id <= 0) 0 else id
     }
 
+    fun setPreferredOutputDevice(device: AudioDeviceInfo?) {
+        preferredOutputDevice = device
+        applyPreferredOutputDevice()
+    }
+
+    private fun applyPreferredOutputDevice() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        try {
+            player.setPreferredAudioDevice(preferredOutputDevice)
+        } catch (_: Exception) {
+        }
+    }
+
     fun loadBeat(uri: Uri) {
         player.setMediaItem(MediaItem.fromUri(uri))
         player.prepare()
+        applyPreferredOutputDevice()
         startProgressUpdates()
     }
 
     fun play() {
+        applyPreferredOutputDevice()
         player.playWhenReady = true
         player.play()
     }
@@ -164,7 +182,11 @@ class BeatPreviewPlayer(context: Context) {
     }
 
     fun togglePlayPause() {
-        if (player.isPlaying) pause() else play()
+        if (player.isPlaying) {
+            pause()
+        } else {
+            play()
+        }
     }
 
     fun seekTo(ms: Long) {

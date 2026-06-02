@@ -45,6 +45,8 @@
     <string name="record_mode_voice_only">Tylko głos</string>
     <string name="record_input_mic">Wejście nagrywania</string>
     <string name="record_choose_input">Wybierz wejście</string>
+    <string name="record_output_beat">Wyjście beatu</string>
+    <string name="record_choose_output">Wybierz wyjście</string>
     <string name="record_add_beat">Dodaj bit (plik audio)</string>
     <string name="record_save">Zapisz do Muzyka</string>
     <string name="record_share">Udostępnij</string>
