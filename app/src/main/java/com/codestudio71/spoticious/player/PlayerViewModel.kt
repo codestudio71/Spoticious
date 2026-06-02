@@ -12,8 +12,11 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import org.json.JSONObject
 import com.codestudio71.spoticious.R
+import com.codestudio71.spoticious.SpoticiousApplication
 import com.codestudio71.spoticious.data.EqPrefKeys
 import com.codestudio71.spoticious.data.eqPreferencesDataStore
+import com.codestudio71.spoticious.data.wrapped.PlayEvent
+import com.codestudio71.spoticious.data.wrapped.SpoticiousDatabase
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -129,6 +132,10 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private var persistEqJob: Job? = null
     private var lastSeekAtMs: Long = 0L
 
+    /** Jedna kwalifikowana statystyka na sesję odtworzenia danego URI. */
+    private var listenSessionUri: Uri? = null
+    private var listenQualifiedRecorded = false
+
     private fun defaultTrackName(): String = getApplication<Application>().getString(R.string.track_default)
 
     init {
@@ -171,6 +178,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                                 }
                             }
                             Player.REPEAT_MODE_ONE -> {
+                                resetListenSessionForRepeat()
                                 player.seekTo(0)
                                 player.play()
                                 _currentPosition.value = 0L
@@ -474,6 +482,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                     _currentPosition.value = pos
                 }
                 _duration.value = player.duration.coerceAtLeast(0L)
+                if (player.isPlaying) {
+                    maybeRecordQualifiedListen()
+                }
                 saveCounter++
                 if (saveCounter >= 30) {
                     saveCounter = 0
@@ -559,6 +570,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         player.stop()
         _selectedUri.value = uri
         _fileName.value = name
+        resetListenSession(uri)
         _metadata.value = null
         playbackRepo.savePlaybackState(uri.toString(), 0L, name)
         viewModelScope.launch {
@@ -577,6 +589,73 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             _isPlaying.value = false
         }
         applyRepeatModeToPlayer()
+    }
+
+    private fun resetListenSession(uri: Uri) {
+        listenSessionUri = uri
+        listenQualifiedRecorded = false
+    }
+
+    private fun resetListenSessionForRepeat() {
+        listenQualifiedRecorded = false
+        listenSessionUri = _selectedUri.value
+    }
+
+    private fun qualifiedListenThresholdMs(durationMs: Long): Long {
+        if (durationMs <= 0L) return 30_000L
+        return minOf(30_000L, (durationMs * 0.5).toLong().coerceAtLeast(1L))
+    }
+
+    private fun maybeRecordQualifiedListen() {
+        val uri = _selectedUri.value ?: return
+        if (listenQualifiedRecorded) return
+        if (listenSessionUri != uri) {
+            resetListenSession(uri)
+        }
+        val durationMs = _duration.value
+        if (durationMs <= 0L) return
+        val positionMs = _currentPosition.value
+        if (positionMs < qualifiedListenThresholdMs(durationMs)) return
+        listenQualifiedRecorded = true
+        val title = _fileName.value?.takeIf { it.isNotBlank() } ?: defaultTrackName()
+        val artist = extractArtist(uri)
+        persistQualifiedPlayEvent(uri, title, artist, durationMs)
+    }
+
+    private fun persistQualifiedPlayEvent(
+        uri: Uri,
+        title: String,
+        artist: String?,
+        durationMs: Long,
+    ) {
+        val app = getApplication<Application>()
+        val scope = (SpoticiousApplication.instance ?: app as? SpoticiousApplication)?.masterDataScope
+            ?: return
+        val dao = SpoticiousDatabase.get(app).playEventDao()
+        scope.launch {
+            dao.insert(
+                PlayEvent(
+                    trackUri = uri.toString(),
+                    title = title,
+                    artist = artist,
+                    durationMs = durationMs,
+                    playedAtMs = System.currentTimeMillis(),
+                    qualified = true,
+                ),
+            )
+        }
+    }
+
+    private fun extractArtist(uri: Uri): String? {
+        return try {
+            val retriever = MediaMetadataRetriever()
+            retriever.setDataSource(getApplication(), uri)
+            val artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+            retriever.release()
+            artist?.trim()?.takeIf { it.isNotEmpty() }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun extractMetadata(uri: Uri): AudioMetadata? {

@@ -26,6 +26,18 @@
     <!-- ExtraScreen -->
     <string name="extra_title">Extra</string>
     <string name="wrapped">Wrapped</string>
+    <string name="wrapped_subtitle">Your listening stats</string>
+    <string name="wrapped_period_week">Last 7 days</string>
+    <string name="wrapped_period_month">This month</string>
+    <string name="wrapped_period_year">This year</string>
+    <string name="wrapped_period_all">All time</string>
+    <string name="wrapped_total_time">Total time</string>
+    <string name="wrapped_total_plays">Plays</string>
+    <string name="wrapped_top_tracks">Top 10 tracks</string>
+    <string name="wrapped_top_artists">Top 10 artists</string>
+    <string name="wrapped_play_count">%d plays</string>
+    <string name="wrapped_unknown_artist">Unknown</string>
+    <string name="wrapped_empty">Listen to music — your stats will show up here.</string>
     <string name="record_preview">Record Preview</string>
     <string name="record_preview_subtitle">Freestyle over a beat or voice only</string>
     <string name="record_preview_title">Record Preview</string>

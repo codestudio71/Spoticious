@@ -189,9 +189,6 @@ fun FoldersScreen(
             }
             else -> {
                 var expandedFolders by remember { mutableStateOf(setOf<String>()) }
-                val allFilteredFiles = remember(filteredFolders) {
-                    filteredFolders.flatMap { it.files }
-                }
 
                 LazyColumn(
                     modifier = Modifier
@@ -213,8 +210,9 @@ fun FoldersScreen(
                             },
                             onFileClick = { file ->
                                 if (!playerViewModel.isCurrentTrackUri(file.uri)) {
-                                    val playlist = allFilteredFiles.map { f -> f.uri to f.displayName }
-                                    val index = allFilteredFiles.indexOf(file)
+                                    val folderTracks = folder.files
+                                    val playlist = folderTracks.map { f -> f.uri to f.displayName }
+                                    val index = folderTracks.indexOf(file)
                                     playerViewModel.selectFileWithPlaylist(
                                         file.uri,
                                         file.displayName,

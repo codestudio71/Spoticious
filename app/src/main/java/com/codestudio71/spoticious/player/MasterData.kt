@@ -6,12 +6,39 @@ data class MasterData(
     val maxLufsM: Double,
     val maxLufsS: Double,
     val lufsI: Double,
-    val lra: Double
+    val lra: Double,
 ) {
-    fun formatPeak(): String = "%+.1f".format(peakDb)
-    fun formatClips(): String = clips.toString()
-    fun formatLufsM(): String = "%.1f".format(maxLufsM)
-    fun formatLufsS(): String = "%.1f".format(maxLufsS)
-    fun formatLufsI(): String = "%.1f".format(lufsI)
-    fun formatLra(): String = "%.1f LU".format(lra)
+    companion object {
+        /** WebM/Opus — kolumna Clips pokazuje „—”, nie licznik. */
+        const val CLIPS_UNSUPPORTED = -1
+
+        fun unsupportedClipsContainer(): MasterData =
+            MasterData(
+                peakDb = Double.NaN,
+                clips = CLIPS_UNSUPPORTED,
+                maxLufsM = Double.NaN,
+                maxLufsS = Double.NaN,
+                lufsI = Double.NaN,
+                lra = Double.NaN,
+            )
+    }
+
+    private fun fmtDb(v: Double): String = if (v.isNaN()) "—" else "%+.1f".format(v)
+
+    private fun fmtLufs(v: Double): String = if (v.isNaN()) "—" else "%.1f".format(v)
+
+    fun formatPeak(): String = fmtDb(peakDb)
+
+    fun formatClips(): String =
+        when (clips) {
+            CLIPS_UNSUPPORTED -> "—"
+            else -> clips.toString()
+        }
+    fun formatLufsM(): String = fmtLufs(maxLufsM)
+
+    fun formatLufsS(): String = fmtLufs(maxLufsS)
+
+    fun formatLufsI(): String = fmtLufs(lufsI)
+
+    fun formatLra(): String = if (lra.isNaN()) "—" else "%.1f LU".format(lra)
 }

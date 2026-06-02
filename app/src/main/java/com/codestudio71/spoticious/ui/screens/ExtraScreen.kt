@@ -46,7 +46,8 @@ fun ExtraScreen(
     onBack: () -> Unit,
     onPlaylistClick: () -> Unit,
     onRecordPreviewClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onWrappedClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
 
@@ -97,7 +98,8 @@ fun ExtraScreen(
             ExtraCard(
                 icon = Icons.Default.BarChart,
                 title = stringResource(R.string.wrapped),
-                subtitle = stringResource(R.string.coming_soon)
+                subtitle = stringResource(R.string.wrapped_subtitle),
+                onClick = onWrappedClick,
             )
             ExtraCard(
                 icon = Icons.Default.Mic,

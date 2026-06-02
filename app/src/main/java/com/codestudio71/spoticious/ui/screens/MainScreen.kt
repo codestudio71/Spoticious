@@ -82,6 +82,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
     var showExtraScreen by remember { mutableStateOf(false) }
     var showPlaylistScreen by remember { mutableStateOf(false) }
     var showRecordPreview by remember { mutableStateOf(false) }
+    var showWrapped by remember { mutableStateOf(false) }
     var searchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var sortMode by remember { mutableStateOf(TrackSortOrder.NAME_ASC) }
@@ -105,7 +106,12 @@ fun MainScreen(modifier: Modifier = Modifier) {
     BackHandler(enabled = showRecordPreview && showExtraScreen) {
         showRecordPreview = false
     }
-    BackHandler(enabled = showExtraScreen && !showRecordPreview) { showExtraScreen = false }
+    BackHandler(enabled = showWrapped && showExtraScreen) {
+        showWrapped = false
+    }
+    BackHandler(enabled = showExtraScreen && !showRecordPreview && !showWrapped) {
+        showExtraScreen = false
+    }
     BackHandler(enabled = searchExpanded && !showExtraScreen) {
         searchExpanded = false
         searchQuery = ""
@@ -133,6 +139,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     onExtraClick = {
                         showRecordPreview = false
                         showPlaylistScreen = false
+                        showWrapped = false
                         showExtraScreen = true
                     },
                     sortMode = sortMode,
@@ -229,6 +236,12 @@ fun MainScreen(modifier: Modifier = Modifier) {
         ) {
             if (showExtraScreen) {
                 when {
+                    showWrapped ->
+                        WrappedScreen(
+                            onBack = { showWrapped = false },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+
                     showRecordPreview ->
                         RecordPreviewScreen(
                             onBack = { showRecordPreview = false },
@@ -246,11 +259,18 @@ fun MainScreen(modifier: Modifier = Modifier) {
                             onBack = { showExtraScreen = false },
                             onPlaylistClick = {
                                 showRecordPreview = false
+                                showWrapped = false
                                 showPlaylistScreen = true
                             },
                             onRecordPreviewClick = {
                                 showPlaylistScreen = false
+                                showWrapped = false
                                 showRecordPreview = true
+                            },
+                            onWrappedClick = {
+                                showRecordPreview = false
+                                showPlaylistScreen = false
+                                showWrapped = true
                             },
                         )
                 }
