@@ -16,6 +16,7 @@ import com.codestudio71.spoticious.SpoticiousApplication
 import com.codestudio71.spoticious.data.EqPrefKeys
 import com.codestudio71.spoticious.data.eqPreferencesDataStore
 import com.codestudio71.spoticious.data.wrapped.PlayEvent
+import com.codestudio71.spoticious.data.wrapped.PlayEventArtistResolver
 import com.codestudio71.spoticious.data.wrapped.SpoticiousDatabase
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.AndroidViewModel
@@ -135,6 +136,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     /** Jedna kwalifikowana statystyka na sesję odtworzenia danego URI. */
     private var listenSessionUri: Uri? = null
     private var listenQualifiedRecorded = false
+    private var listenSessionAccumulatedMs = 0L
+    private var listenSessionPlayEventId: Long? = null
 
     private fun defaultTrackName(): String = getApplication<Application>().getString(R.string.track_default)
 
@@ -173,6 +176,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                                 if (_shuffleEnabled.value || currentIndex < lastIndex) {
                                     skipToNext()
                                 } else {
+                                    finalizeListenSession()
                                     player.pause()
                                     _isPlaying.value = false
                                 }
@@ -483,6 +487,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 _duration.value = player.duration.coerceAtLeast(0L)
                 if (player.isPlaying) {
+                    accumulateListenTime()
                     maybeRecordQualifiedListen()
                 }
                 saveCounter++
@@ -591,19 +596,51 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         applyRepeatModeToPlayer()
     }
 
+    private fun finalizeListenSession() {
+        val rowId = listenSessionPlayEventId ?: return
+        if (!listenQualifiedRecorded) {
+            listenSessionPlayEventId = null
+            return
+        }
+        val totalListenedMs = listenSessionAccumulatedMs.coerceAtLeast(0L)
+        listenSessionPlayEventId = null
+        val app = getApplication<Application>()
+        val scope =
+            (SpoticiousApplication.instance ?: app as? SpoticiousApplication)?.masterDataScope
+                ?: return
+        scope.launch {
+            SpoticiousDatabase.get(app).playEventDao().updateListenedMs(rowId, totalListenedMs)
+        }
+    }
+
     private fun resetListenSession(uri: Uri) {
+        finalizeListenSession()
         listenSessionUri = uri
         listenQualifiedRecorded = false
+        listenSessionAccumulatedMs = 0L
+        listenSessionPlayEventId = null
     }
 
     private fun resetListenSessionForRepeat() {
+        finalizeListenSession()
         listenQualifiedRecorded = false
         listenSessionUri = _selectedUri.value
+        listenSessionAccumulatedMs = 0L
+        listenSessionPlayEventId = null
     }
 
+    /** min(30 s, 50% długości utworu) — liczone od faktycznego czasu grania, nie pozycji seekbara. */
     private fun qualifiedListenThresholdMs(durationMs: Long): Long {
         if (durationMs <= 0L) return 30_000L
         return minOf(30_000L, (durationMs * 0.5).toLong().coerceAtLeast(1L))
+    }
+
+    private fun accumulateListenTime() {
+        val uri = _selectedUri.value ?: return
+        if (listenSessionUri != uri) {
+            resetListenSession(uri)
+        }
+        listenSessionAccumulatedMs += LISTEN_POSITION_TICK_MS
     }
 
     private fun maybeRecordQualifiedListen() {
@@ -614,35 +651,50 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
         val durationMs = _duration.value
         if (durationMs <= 0L) return
-        val positionMs = _currentPosition.value
-        if (positionMs < qualifiedListenThresholdMs(durationMs)) return
+        val threshold = qualifiedListenThresholdMs(durationMs)
+        if (listenSessionAccumulatedMs < threshold) return
         listenQualifiedRecorded = true
         val title = _fileName.value?.takeIf { it.isNotBlank() } ?: defaultTrackName()
-        val artist = extractArtist(uri)
-        persistQualifiedPlayEvent(uri, title, artist, durationMs)
+        val tagArtist = extractArtist(uri)
+        val artist = PlayEventArtistResolver.resolve(title, tagArtist)
+        persistQualifiedPlayEvent(
+            uri = uri,
+            title = title,
+            artist = artist,
+            durationMs = durationMs,
+            listenedMs = listenSessionAccumulatedMs,
+        )
     }
 
     private fun persistQualifiedPlayEvent(
         uri: Uri,
         title: String,
-        artist: String?,
+        artist: String,
         durationMs: Long,
+        listenedMs: Long,
     ) {
         val app = getApplication<Application>()
         val scope = (SpoticiousApplication.instance ?: app as? SpoticiousApplication)?.masterDataScope
             ?: return
         val dao = SpoticiousDatabase.get(app).playEventDao()
         scope.launch {
-            dao.insert(
-                PlayEvent(
-                    trackUri = uri.toString(),
-                    title = title,
-                    artist = artist,
-                    durationMs = durationMs,
-                    playedAtMs = System.currentTimeMillis(),
-                    qualified = true,
-                ),
-            )
+            val rowId =
+                dao.insert(
+                    PlayEvent(
+                        trackUri = uri.toString(),
+                        title = title,
+                        artist = artist,
+                        durationMs = durationMs,
+                        listenedMs = listenedMs.coerceAtLeast(0L),
+                        playedAtMs = System.currentTimeMillis(),
+                        qualified = true,
+                    ),
+                )
+            withContext(Dispatchers.Main.immediate) {
+                if (listenQualifiedRecorded && listenSessionPlayEventId == null) {
+                    listenSessionPlayEventId = rowId
+                }
+            }
         }
     }
 
@@ -897,6 +949,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     override fun onCleared() {
+        finalizeListenSession()
         sleepTimerJob?.cancel()
         _sleepTimerRemainingMinutes.value = null
         PlaybackService.onSkipToNextCallback = null
@@ -909,5 +962,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     companion object {
         private const val MAX_EQ_PRESETS = 20
+        private const val LISTEN_POSITION_TICK_MS = 100L
     }
 }

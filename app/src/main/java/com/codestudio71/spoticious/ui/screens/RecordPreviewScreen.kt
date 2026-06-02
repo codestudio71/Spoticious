@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -63,6 +65,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -190,14 +193,17 @@ fun RecordPreviewScreen(
         }
     }
 
+    val scrollState = rememberScrollState()
+
     Column(
         modifier =
             modifier
                 .fillMaxSize()
                 .background(Brush.verticalGradient(BgGrad))
-                .padding(horizontal = 16.dp)
                 .statusBarsPadding()
-                .navigationBarsPadding(),
+                .verticalScroll(scrollState)
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -371,78 +377,67 @@ fun RecordPreviewScreen(
             }
         }
 
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (isRecording) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    WaveformWithMeter(
-                        label = "MIC",
-                        frames = micWaveform,
-                        dbfs = micDbfs,
-                        peakDbfs = micPeakDbfs,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    if (isFreestyle && beatLoaded) {
-                        Spacer(Modifier.height(12.dp))
-                        WaveformWithMeter(
-                            label = "BEAT",
-                            frames = beatWaveform,
-                            dbfs = beatDbfs,
-                            peakDbfs = beatPeakDbfs,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-            } else if (isSaved) {
-                val durMax = savedTakeDurMs.coerceAtLeast(1L).toFloat()
-                val clampedPos =
-                    if (savedTakeDurMs > 0L) savedTakePosMs.coerceIn(0L, savedTakeDurMs) else savedTakePosMs
-                Column(
+        if (isRecording) {
+            WaveformWithMeter(
+                label = "MIC",
+                frames = micWaveform,
+                dbfs = micDbfs,
+                peakDbfs = micPeakDbfs,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (isFreestyle && beatLoaded) {
+                Spacer(Modifier.height(12.dp))
+                WaveformWithMeter(
+                    label = "BEAT",
+                    frames = beatWaveform,
+                    dbfs = beatDbfs,
+                    peakDbfs = beatPeakDbfs,
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    OutlinedTextField(
-                        value = recordingName,
-                        onValueChange = { recordingName = it },
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                        singleLine = true,
-                        placeholder = {
-                            Text(
-                                stringResource(R.string.record_name_placeholder),
-                                color = Color.White.copy(alpha = 0.5f),
-                            )
-                        },
-                        colors =
-                            OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                cursorColor = CyanUi,
-                                focusedBorderColor = CyanUi,
-                                unfocusedBorderColor = CyanUi,
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
-                                unfocusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
-                                focusedLabelColor = CyanUi,
-                                unfocusedLabelColor = CyanUi,
-                            ),
-                        shape = RoundedCornerShape(8.dp),
-                    )
-                    Spacer(Modifier.height(12.dp))
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+        } else if (isSaved) {
+            val durMax = savedTakeDurMs.coerceAtLeast(1L).toFloat()
+            val clampedPos =
+                if (savedTakeDurMs > 0L) savedTakePosMs.coerceIn(0L, savedTakeDurMs) else savedTakePosMs
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                OutlinedTextField(
+                    value = recordingName,
+                    onValueChange = { recordingName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = {
+                        Text(
+                            stringResource(R.string.record_name_placeholder),
+                            color = Color.White.copy(alpha = 0.5f),
+                        )
+                    },
+                    colors =
+                        OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            cursorColor = CyanUi,
+                            focusedBorderColor = CyanUi,
+                            unfocusedBorderColor = CyanUi,
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
+                            unfocusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
+                            focusedLabelColor = CyanUi,
+                            unfocusedLabelColor = CyanUi,
+                        ),
+                    shape = RoundedCornerShape(8.dp),
+                )
+                Spacer(Modifier.height(12.dp))
 
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp, horizontal = 16.dp),
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
@@ -495,37 +490,39 @@ fun RecordPreviewScreen(
                         )
                     }
 
-                    Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                ) {
+                    Button(
+                        onClick = { viewModel.saveRecordingToMusicWithBaseName(recordingName) },
+                        modifier = Modifier.weight(1f),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = CyanUi,
+                                contentColor = DarkOnCyan,
+                            ),
+                        shape = RoundedCornerShape(24.dp),
                     ) {
-                        Button(
-                            onClick = { viewModel.saveRecordingToMusicWithBaseName(recordingName) },
-                            colors =
-                                ButtonDefaults.buttonColors(
-                                    containerColor = CyanUi,
-                                    contentColor = DarkOnCyan,
-                                ),
-                            shape = RoundedCornerShape(24.dp),
-                        ) {
-                            Text(stringResource(R.string.record_save))
-                        }
-                        OutlinedButton(
-                            onClick = { deleteDialog = true },
-                            border = BorderStroke(1.dp, RecRed),
-                            colors =
-                                ButtonDefaults.outlinedButtonColors(
-                                    contentColor = RecRed,
-                                ),
-                            shape = RoundedCornerShape(24.dp),
-                        ) {
-                            Text(stringResource(R.string.record_delete))
-                        }
+                        Text(stringResource(R.string.record_save))
+                    }
+                    OutlinedButton(
+                        onClick = { deleteDialog = true },
+                        modifier = Modifier.weight(1f),
+                        border = BorderStroke(1.dp, RecRed),
+                        colors =
+                            ButtonDefaults.outlinedButtonColors(
+                                contentColor = RecRed,
+                            ),
+                        shape = RoundedCornerShape(24.dp),
+                    ) {
+                        Text(stringResource(R.string.record_delete))
                     }
                 }
             }
+            Spacer(Modifier.height(16.dp))
         }
 
         if (!isSaved) {
@@ -533,17 +530,18 @@ fun RecordPreviewScreen(
                 text = formattedDuration,
                 color = CyanUi,
                 fontSize = 22.sp,
-                modifier = Modifier.align(Alignment.CenterHorizontally),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                textAlign = TextAlign.Center,
             )
         }
 
         Spacer(Modifier.height(16.dp))
 
         Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
+            modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center,
         ) {
             Button(
@@ -563,7 +561,7 @@ fun RecordPreviewScreen(
             }
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(24.dp))
     }
 
     if (headsetDialog) {

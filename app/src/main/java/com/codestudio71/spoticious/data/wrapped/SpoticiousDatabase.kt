@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [PlayEvent::class], version = 1, exportSchema = false)
+@Database(entities = [PlayEvent::class], version = 2, exportSchema = false)
 abstract class SpoticiousDatabase : RoomDatabase() {
 
     abstract fun playEventDao(): PlayEventDao
@@ -20,7 +20,10 @@ abstract class SpoticiousDatabase : RoomDatabase() {
                     context.applicationContext,
                     SpoticiousDatabase::class.java,
                     "spoticious_wrapped.db",
-                ).build().also { instance = it }
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
+                    .also { instance = it }
             }
     }
 }

@@ -54,7 +54,7 @@ class WrappedViewModel(application: Application) : AndroidViewModel(application)
                 _topTracks.value = dao.topTracks(since)
                 _topArtists.value = dao.topArtists(since)
                 _totalPlays.value = dao.totalPlays(since)
-                _totalTimeMs.value = dao.totalQualifiedTimeMs(since)
+                _totalTimeMs.value = dao.totalListenedTimeMs(since)
             }
             _loading.value = false
         }

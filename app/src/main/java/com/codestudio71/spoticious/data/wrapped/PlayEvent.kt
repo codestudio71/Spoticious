@@ -10,6 +10,8 @@ data class PlayEvent(
     val title: String,
     val artist: String?,
     val durationMs: Long,
+    /** Faktyczny czas grania w tej sesji (bez pauz). */
+    val listenedMs: Long,
     val playedAtMs: Long,
     val qualified: Boolean,
 )

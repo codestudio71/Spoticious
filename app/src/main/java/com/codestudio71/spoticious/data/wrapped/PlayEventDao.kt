@@ -18,7 +18,10 @@ data class ArtistPlayCount(
 interface PlayEventDao {
 
     @Insert
-    suspend fun insert(event: PlayEvent)
+    suspend fun insert(event: PlayEvent): Long
+
+    @Query("UPDATE play_events SET listenedMs = :listenedMs WHERE id = :id")
+    suspend fun updateListenedMs(id: Long, listenedMs: Long)
 
     @Query(
         """
@@ -54,9 +57,9 @@ interface PlayEventDao {
 
     @Query(
         """
-        SELECT COALESCE(SUM(durationMs), 0) FROM play_events
+        SELECT COALESCE(SUM(listenedMs), 0) FROM play_events
         WHERE playedAtMs >= :sinceMs AND qualified = 1
         """,
     )
-    suspend fun totalQualifiedTimeMs(sinceMs: Long): Long
+    suspend fun totalListenedTimeMs(sinceMs: Long): Long
 }

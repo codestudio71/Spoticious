@@ -122,31 +122,33 @@ fun MainScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.background,
             topBar = {
-                MainTopBar(
-                    selectedTab = selectedTab,
-                    searchExpanded = searchExpanded,
-                    searchQuery = searchQuery,
-                    onSearchQueryChange = { searchQuery = it },
-                    onSearchClick = {
-                        if (selectedTab == Tab.UTWORY || selectedTab == Tab.FOLDERY) {
-                            searchExpanded = true
-                        }
-                    },
-                    onSearchClose = {
-                        searchExpanded = false
-                        searchQuery = ""
-                    },
-                    onExtraClick = {
-                        showRecordPreview = false
-                        showPlaylistScreen = false
-                        showWrapped = false
-                        showExtraScreen = true
-                    },
-                    sortMode = sortMode,
-                    onSortModeChange = { sortMode = it },
-                    sortMenuExpanded = sortMenuExpanded,
-                    onSortMenuExpandedChange = { sortMenuExpanded = it },
-                )
+                if (!(showExtraScreen && showRecordPreview)) {
+                    MainTopBar(
+                        selectedTab = selectedTab,
+                        searchExpanded = searchExpanded,
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = { searchQuery = it },
+                        onSearchClick = {
+                            if (selectedTab == Tab.UTWORY || selectedTab == Tab.FOLDERY) {
+                                searchExpanded = true
+                            }
+                        },
+                        onSearchClose = {
+                            searchExpanded = false
+                            searchQuery = ""
+                        },
+                        onExtraClick = {
+                            showRecordPreview = false
+                            showPlaylistScreen = false
+                            showWrapped = false
+                            showExtraScreen = true
+                        },
+                        sortMode = sortMode,
+                        onSortModeChange = { sortMode = it },
+                        sortMenuExpanded = sortMenuExpanded,
+                        onSortMenuExpandedChange = { sortMenuExpanded = it },
+                    )
+                }
             },
             bottomBar = {
                 if (!(showExtraScreen && showRecordPreview)) {
