@@ -3,7 +3,6 @@ package com.codestudio71.spoticious.audio.record
 import android.Manifest
 import android.app.Application
 import android.content.ContentValues
-import android.content.Intent
 import android.media.AudioDeviceInfo
 import android.media.audiofx.Visualizer
 import android.net.Uri
@@ -12,7 +11,6 @@ import android.os.Environment
 import android.os.SystemClock
 import android.provider.MediaStore
 import android.widget.Toast
-import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.codestudio71.spoticious.R
@@ -26,8 +24,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 enum class RecordMode {
     Freestyle,
@@ -49,6 +47,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     private val vocalRecorder = VocalRecorder()
     private val beatPreviewPlayer = BeatPreviewPlayer(application)
+    private val savedTakePreviewPlayer = SavedTakePreviewPlayer(application)
     private val deviceRepo = RecordingDeviceRepository(application)
     private val waveformAnalyzer = WaveformAnalyzer()
 
@@ -114,6 +113,10 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     val beatDurationMs: StateFlow<Long> = beatPreviewPlayer.durationMs
     val beatIsPlaying: StateFlow<Boolean> = beatPreviewPlayer.isPlaying
 
+    val savedTakePositionMs: StateFlow<Long> = savedTakePreviewPlayer.positionMs
+    val savedTakeDurationMs: StateFlow<Long> = savedTakePreviewPlayer.durationMs
+    val savedTakeIsPlaying: StateFlow<Boolean> = savedTakePreviewPlayer.isPlaying
+
     private val _mode = MutableStateFlow(RecordMode.Freestyle)
     val mode: StateFlow<RecordMode> = _mode.asStateFlow()
 
@@ -129,6 +132,14 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _selectedDeviceId = MutableStateFlow<Int?>(null)
+
+    /** Gdy true — użytkownik jest na Record Preview; logika auto-USB działa tylko wtedy. */
+    private var recordPreviewScreenActive = false
+
+    /** Ręczny wybór z listy — nie nadpisuj automatycznie (USB plug itd.) do czasu wyjścia z ekranu. */
+    private var userOverrodeInputSelection = false
+
+    private var hadUsbFamilyConnected = false
 
     val pickedInputLabel: StateFlow<String?> =
         combine(deviceRepo.devices, _selectedDeviceId) { devices, id ->
@@ -150,21 +161,111 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         viewModelScope.launch {
-            deviceRepo.devices.collect { list ->
-                if (list.isEmpty()) return@collect
-                val id = _selectedDeviceId.value
-                if (id == null || list.none { it.info.id == id }) {
-                    _selectedDeviceId.value = list.first().info.id
+            deviceRepo.devices.collect { list -> onInputDevicesChanged(list) }
+        }
+
+        viewModelScope.launch {
+            vocalRecorder.recordingState.collect { st ->
+                when (st) {
+                    is RecordingState.Saved -> savedTakePreviewPlayer.loadFile(st.file)
+                    else -> savedTakePreviewPlayer.clear()
                 }
             }
+        }
+    }
+
+    /** Wywołaj przy wejściu na Record Preview (np. [DisposableEffect]). */
+    fun notifyRecordPreviewScreenOpened() {
+        recordPreviewScreenActive = true
+        userOverrodeInputSelection = false
+        val list = deviceRepo.devices.value
+        if (list.isEmpty()) {
+            _selectedDeviceId.value = null
+        } else {
+            _selectedDeviceId.value = RecordingDeviceRepository.defaultInputDeviceId(list)
+        }
+        hadUsbFamilyConnected = RecordingDeviceRepository.listHasUsbFamily(list)
+    }
+
+    /** Wywołaj przy opuszczeniu Record Preview — znów można stosować pełną automatykę przy następnym wejściu. */
+    fun notifyRecordPreviewScreenClosed() {
+        recordPreviewScreenActive = false
+        userOverrodeInputSelection = false
+    }
+
+    private fun onInputDevicesChanged(list: List<InputDeviceOption>) {
+        if (!recordPreviewScreenActive) return
+
+        if (list.isEmpty()) {
+            _selectedDeviceId.value = null
+            hadUsbFamilyConnected = false
+            return
+        }
+
+        val nowUsb = RecordingDeviceRepository.listHasUsbFamily(list)
+        val selectedId = _selectedDeviceId.value
+        val selectedStillValid = selectedId != null && list.any { it.info.id == selectedId }
+
+        if (userOverrodeInputSelection && selectedStillValid) {
+            hadUsbFamilyConnected = nowUsb
+            return
+        }
+
+        if (userOverrodeInputSelection && !selectedStillValid) {
+            userOverrodeInputSelection = false
+        }
+
+        if (nowUsb && !hadUsbFamilyConnected && !userOverrodeInputSelection) {
+            val usb =
+                list.firstOrNull { RecordingDeviceRepository.isUsbInputFamily(it.info.type) }
+            if (usb != null) {
+                _selectedDeviceId.value = usb.info.id
+                toastSwitchedToUsbMic()
+            }
+            hadUsbFamilyConnected = nowUsb
+            return
+        }
+
+        if (!nowUsb && hadUsbFamilyConnected && !userOverrodeInputSelection) {
+            val builtinId = RecordingDeviceRepository.firstBuiltinMicId(list)
+            _selectedDeviceId.value =
+                builtinId ?: RecordingDeviceRepository.defaultInputDeviceId(list)
+            hadUsbFamilyConnected = false
+            return
+        }
+
+        if (!selectedStillValid) {
+            _selectedDeviceId.value = RecordingDeviceRepository.defaultInputDeviceId(list)
+        }
+
+        hadUsbFamilyConnected = nowUsb
+    }
+
+    private fun toastSwitchedToUsbMic() {
+        viewModelScope.launch(Dispatchers.Main) {
+            val app = getApplication<Application>()
+            Toast.makeText(
+                app,
+                app.getString(R.string.record_switched_usb_mic),
+                Toast.LENGTH_SHORT,
+            ).show()
         }
     }
 
     override fun onCleared() {
         super.onCleared()
         beatPreviewPlayer.release()
+        savedTakePreviewPlayer.destroy()
         vocalRecorder.release()
         deviceRepo.stop()
+    }
+
+    fun toggleSavedTakePreview() {
+        savedTakePreviewPlayer.togglePlayPause()
+    }
+
+    fun seekSavedTakePreview(ms: Long) {
+        savedTakePreviewPlayer.seekToMs(ms)
     }
 
     fun toggleMode() {
@@ -199,6 +300,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun setSelectedDevice(deviceId: Int) {
+        userOverrodeInputSelection = true
         _selectedDeviceId.value = deviceId
     }
 
@@ -209,11 +311,17 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         return dev.info.type == AudioDeviceInfo.TYPE_BUILTIN_MIC
     }
 
+    /** Mono: jedno wejście z listy whitelist (patrz RecordingDeviceRepository). */
     private fun resolveRecordingDevice(): AudioDeviceInfo? {
         val list = deviceRepo.devices.value
         val id = _selectedDeviceId.value
-        return id?.let { lid -> list.firstOrNull { it.info.id == lid }?.info }
-            ?: list.firstOrNull()?.info
+        id?.let { lid ->
+            list.firstOrNull { it.info.id == lid }?.info?.let { return it }
+        }
+        RecordingDeviceRepository.defaultInputDeviceId(list)?.let { def ->
+            list.firstOrNull { it.info.id == def }?.info?.let { return it }
+        }
+        return list.firstOrNull()?.info
     }
 
     private fun resetWaveformVisualization() {
@@ -309,6 +417,15 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     fun confirmStartRecording() {
         viewModelScope.launch {
+            val prev = vocalRecorder.recordingState.value
+            if (prev is RecordingState.Saved) {
+                withContext(Dispatchers.IO) {
+                    runCatching { prev.file.delete() }
+                }
+                vocalRecorder.discardSavedToIdle()
+                savedTakePreviewPlayer.clear()
+            }
+
             val outFile =
                 File(
                     getApplication<Application>().filesDir,
@@ -373,35 +490,75 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun saveToMediaStoreAndToast(): Uri? {
-        val st = vocalRecorder.recordingState.value
-        val file = (st as? RecordingState.Saved)?.file
-        if (file == null || !file.exists()) {
-            Toast.makeText(
-                getApplication(),
-                getApplication<Application>().getString(R.string.record_save_nothing),
-                Toast.LENGTH_LONG,
-            ).show()
-            return null
-        }
-        return trySaveToMusic(file).also {
-            Toast.makeText(
-                getApplication(),
-                if (it != null) {
-                    getApplication<Application>().getString(R.string.record_saved_ok)
-                } else {
-                    getApplication<Application>().getString(R.string.record_save_failed)
-                },
-                Toast.LENGTH_SHORT,
-            ).show()
+    fun saveRecordingToMusicWithBaseName(baseName: String) {
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            val st = vocalRecorder.recordingState.value
+            val file = (st as? RecordingState.Saved)?.file
+            if (file == null || !file.exists()) {
+                Toast.makeText(
+                    app,
+                    app.getString(R.string.record_save_nothing),
+                    Toast.LENGTH_LONG,
+                ).show()
+                return@launch
+            }
+            val safe = sanitizeRecordingBaseName(baseName)
+            val displayFileName = "$safe.wav"
+            val uri =
+                withContext(Dispatchers.IO) {
+                    trySaveToMusic(file, displayFileName)
+                }
+            if (uri != null) {
+                withContext(Dispatchers.IO) {
+                    runCatching { file.delete() }
+                }
+                vocalRecorder.discardSavedToIdle()
+                savedTakePreviewPlayer.clear()
+                Toast.makeText(
+                    app,
+                    app.getString(R.string.record_saved_named, displayFileName),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            } else {
+                Toast.makeText(
+                    app,
+                    app.getString(R.string.record_save_failed),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
         }
     }
 
-    private fun trySaveToMusic(src: File): Uri? {
+    fun deleteSavedRecording() {
+        viewModelScope.launch {
+            val st = vocalRecorder.recordingState.value as? RecordingState.Saved ?: return@launch
+            withContext(Dispatchers.IO) {
+                runCatching { st.file.delete() }
+            }
+            vocalRecorder.discardSavedToIdle()
+            savedTakePreviewPlayer.clear()
+        }
+    }
+
+    private fun sanitizeRecordingBaseName(raw: String): String {
+        val trimmed =
+            raw.trim()
+                .removeSuffix(".wav")
+                .removeSuffix(".WAV")
+        val base =
+            trimmed.ifBlank {
+                "Spoticious_rec_${System.currentTimeMillis()}"
+            }
+        val noIllegal = base.replace(Regex("""[/\\:*?"<>|]"""), "_").take(180)
+        return noIllegal.ifBlank { "Spoticious_rec_${System.currentTimeMillis()}" }
+    }
+
+    private fun trySaveToMusic(src: File, displayFileName: String): Uri? {
         return try {
             val app = getApplication<Application>()
             val resolver = app.contentResolver
-            val display = src.name.ifBlank { "Spoticious_rec.wav" }
+            val display = displayFileName.ifBlank { "Spoticious_rec.wav" }
             val values = ContentValues()
             values.put(MediaStore.MediaColumns.DISPLAY_NAME, display)
             values.put(MediaStore.MediaColumns.MIME_TYPE, "audio/wav")
@@ -434,22 +591,6 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             uri
         } catch (_: Exception) {
             null
-        }
-    }
-
-    fun shareIntent(): Intent? {
-        val st = vocalRecorder.recordingState.value
-        val file = (st as? RecordingState.Saved)?.file ?: return null
-        val uri =
-            FileProvider.getUriForFile(
-                getApplication(),
-                "${getApplication<Application>().packageName}.recording_fileprovider",
-                file,
-            )
-        return Intent(Intent.ACTION_SEND).apply {
-            type = "audio/wav"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
     }
 

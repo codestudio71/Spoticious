@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -39,11 +41,18 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -75,7 +84,6 @@ private val BgGrad =
     )
 private val RecRed = Color(0xFFFF1744)
 private val DarkOnCyan = Color(0xFF0D0D1A)
-private val AccentDelete = Color(0xFFFF5277)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,6 +93,13 @@ fun RecordPreviewScreen(
 ) {
     val viewModel: RecordViewModel = viewModel()
     val context = LocalContext.current
+
+    DisposableEffect(Unit) {
+        viewModel.notifyRecordPreviewScreenOpened()
+        onDispose {
+            viewModel.notifyRecordPreviewScreenClosed()
+        }
+    }
 
     val mode by viewModel.mode.collectAsState()
     val recState by viewModel.recordingState.collectAsState()
@@ -100,9 +115,24 @@ fun RecordPreviewScreen(
     val micPeakDbfs by viewModel.micPeakDbfs.collectAsState()
     val beatPeakDbfs by viewModel.beatPeakDbfs.collectAsState()
 
+    val savedTakePosMs by viewModel.savedTakePositionMs.collectAsState()
+    val savedTakeDurMs by viewModel.savedTakeDurationMs.collectAsState()
+    val savedTakePlaying by viewModel.savedTakeIsPlaying.collectAsState()
+
     var deviceMenu by remember { mutableStateOf(false) }
     var headsetDialog by remember { mutableStateOf(false) }
     var skipHeadsetAdvice by remember { mutableStateOf(false) }
+    var deleteDialog by remember { mutableStateOf(false) }
+
+    val savedRecording = recState as? RecordingState.Saved
+    val savedFilePath = savedRecording?.file?.absolutePath
+    var recordingName by remember { mutableStateOf("") }
+    LaunchedEffect(savedFilePath) {
+        savedRecording?.file?.let { recordingName = it.nameWithoutExtension }
+    }
+
+    var sliderDragging by remember { mutableStateOf(false) }
+    var sliderDraft by remember { mutableFloatStateOf(0f) }
 
     val permLauncher =
         rememberLauncherForActivityResult(
@@ -128,6 +158,7 @@ fun RecordPreviewScreen(
     val isBusy = recState is RecordingState.Stopping
     val beatUiLocked = isRecording || isBusy
     val isFreestyle = mode == RecordMode.Freestyle
+    val isSaved = recState is RecordingState.Saved
 
     val durMs =
         when (val st = recState) {
@@ -345,6 +376,7 @@ fun RecordPreviewScreen(
                 Modifier
                     .fillMaxWidth()
                     .weight(1f),
+            contentAlignment = Alignment.Center,
         ) {
             if (isRecording) {
                 Column(
@@ -369,15 +401,141 @@ fun RecordPreviewScreen(
                         )
                     }
                 }
+            } else if (isSaved) {
+                val durMax = savedTakeDurMs.coerceAtLeast(1L).toFloat()
+                val clampedPos =
+                    if (savedTakeDurMs > 0L) savedTakePosMs.coerceIn(0L, savedTakeDurMs) else savedTakePosMs
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    OutlinedTextField(
+                        value = recordingName,
+                        onValueChange = { recordingName = it },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        singleLine = true,
+                        placeholder = {
+                            Text(
+                                stringResource(R.string.record_name_placeholder),
+                                color = Color.White.copy(alpha = 0.5f),
+                            )
+                        },
+                        colors =
+                            OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                cursorColor = CyanUi,
+                                focusedBorderColor = CyanUi,
+                                unfocusedBorderColor = CyanUi,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
+                                unfocusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
+                                focusedLabelColor = CyanUi,
+                                unfocusedLabelColor = CyanUi,
+                            ),
+                        shape = RoundedCornerShape(8.dp),
+                    )
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp, horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        IconButton(
+                            onClick = { viewModel.toggleSavedTakePreview() },
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(
+                                imageVector =
+                                    if (savedTakePlaying) {
+                                        Icons.Default.Pause
+                                    } else {
+                                        Icons.Default.PlayArrow
+                                    },
+                                contentDescription = null,
+                                tint = CyanUi,
+                            )
+                        }
+                        Slider(
+                            value =
+                                if (sliderDragging) {
+                                    sliderDraft
+                                } else {
+                                    clampedPos.toFloat()
+                                }.coerceIn(0f, durMax),
+                            onValueChange = { v ->
+                                sliderDragging = true
+                                sliderDraft = v.coerceIn(0f, durMax)
+                            },
+                            onValueChangeFinished = {
+                                sliderDragging = false
+                                viewModel.seekSavedTakePreview(sliderDraft.toLong())
+                            },
+                            modifier = Modifier.weight(1f),
+                            valueRange = 0f..durMax,
+                            colors =
+                                SliderDefaults.colors(
+                                    thumbColor = CyanUi,
+                                    activeTrackColor = CyanUi,
+                                    inactiveTrackColor = Color.White.copy(alpha = 0.3f),
+                                ),
+                        )
+                        Text(
+                            text =
+                                "${formatRecordTime(if (sliderDragging) sliderDraft.toLong() else savedTakePosMs)} / " +
+                                    formatRecordTime(savedTakeDurMs),
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                        )
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                    ) {
+                        Button(
+                            onClick = { viewModel.saveRecordingToMusicWithBaseName(recordingName) },
+                            colors =
+                                ButtonDefaults.buttonColors(
+                                    containerColor = CyanUi,
+                                    contentColor = DarkOnCyan,
+                                ),
+                            shape = RoundedCornerShape(24.dp),
+                        ) {
+                            Text(stringResource(R.string.record_save))
+                        }
+                        OutlinedButton(
+                            onClick = { deleteDialog = true },
+                            border = BorderStroke(1.dp, RecRed),
+                            colors =
+                                ButtonDefaults.outlinedButtonColors(
+                                    contentColor = RecRed,
+                                ),
+                            shape = RoundedCornerShape(24.dp),
+                        ) {
+                            Text(stringResource(R.string.record_delete))
+                        }
+                    }
+                }
             }
         }
 
-        Text(
-            text = formattedDuration,
-            color = CyanUi,
-            fontSize = 22.sp,
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-        )
+        if (!isSaved) {
+            Text(
+                text = formattedDuration,
+                color = CyanUi,
+                fontSize = 22.sp,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+        }
 
         Spacer(Modifier.height(16.dp))
 
@@ -405,55 +563,6 @@ fun RecordPreviewScreen(
             }
         }
 
-        if (recState is RecordingState.Saved) {
-            val name = (recState as RecordingState.Saved).file.name
-            Text(
-                name,
-                color = Color.White.copy(alpha = 0.9f),
-                fontSize = 13.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            )
-            Spacer(Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                OutlinedButton(
-                    onClick = { viewModel.saveToMediaStoreAndToast() },
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    colors =
-                        ButtonDefaults.outlinedButtonColors(
-                            containerColor = CyanUi,
-                            contentColor = Color.Black,
-                        ),
-                    border = null,
-                ) {
-                    Text(stringResource(R.string.record_save), fontWeight = FontWeight.Bold)
-                }
-                OutlinedButton(
-                    onClick = {
-                        val send = viewModel.shareIntent()
-                        if (send != null) {
-                            context.startActivity(android.content.Intent.createChooser(send, null))
-                        }
-                    },
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    colors =
-                        ButtonDefaults.outlinedButtonColors(
-                            containerColor = Color.Transparent,
-                            contentColor = AccentDelete,
-                        ),
-                    border = BorderStroke(1.dp, AccentDelete),
-                ) {
-                    Text(stringResource(R.string.record_share), fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-
         Spacer(Modifier.height(8.dp))
     }
 
@@ -477,6 +586,38 @@ fun RecordPreviewScreen(
             },
             dismissButton = {
                 TextButton(onClick = { headsetDialog = false }) {
+                    Text(stringResource(R.string.cancel), color = Color.Gray)
+                }
+            },
+            containerColor = Color(0xFF1A1F26),
+        )
+    }
+
+    if (deleteDialog) {
+        val displayName =
+            recordingName.trim().ifBlank {
+                savedRecording?.file?.nameWithoutExtension ?: ""
+            }
+        AlertDialog(
+            onDismissRequest = { deleteDialog = false },
+            text = {
+                Text(
+                    stringResource(R.string.record_delete_confirm, displayName),
+                    color = Color.White,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        deleteDialog = false
+                        viewModel.deleteSavedRecording()
+                    },
+                ) {
+                    Text(stringResource(R.string.record_delete_delete), color = RecRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteDialog = false }) {
                     Text(stringResource(R.string.cancel), color = Color.Gray)
                 }
             },

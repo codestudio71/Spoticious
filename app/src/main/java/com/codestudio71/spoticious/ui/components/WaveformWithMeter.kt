@@ -68,7 +68,7 @@ fun WaveformWithMeter(
                 waveColor = WaveGradient,
                 modifier =
                     Modifier
-                        .weight(0.78f)
+                        .weight(0.82f)
                         .fillMaxHeight(),
             )
             DbfsMeter(
@@ -76,7 +76,7 @@ fun WaveformWithMeter(
                 peakDbfs = peakDbfs,
                 modifier =
                     Modifier
-                        .weight(0.22f)
+                        .weight(0.18f)
                         .fillMaxHeight(),
             )
         }

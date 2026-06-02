@@ -16,7 +16,7 @@ data class InputDeviceOption(
     val label: String,
 )
 
-/** Lista wejść audio dostępnych dla nagrywania (MIC / headset itd.). */
+/** Wejścia nagrywania (mono — jedno [AudioDeviceInfo] na sesję), filtrowane whitelistą typów. */
 class RecordingDeviceRepository(context: Context) {
 
     private val app = context.applicationContext
@@ -58,7 +58,9 @@ class RecordingDeviceRepository(context: Context) {
                     emptyArray()
                 }
             _devices.value =
-                infos.map { InputDeviceOption(it, labelFor(it)) }
+                infos
+                    .filter { isWhitelistedInputType(it.type) }
+                    .map { InputDeviceOption(it, labelFor(it)) }
         } catch (_: Exception) {
             _devices.value = emptyList()
         }
@@ -74,12 +76,20 @@ class RecordingDeviceRepository(context: Context) {
         val typeLabel =
             when (info.type) {
                 AudioDeviceInfo.TYPE_BUILTIN_MIC -> "Mic"
-                AudioDeviceInfo.TYPE_WIRED_HEADSET,
+                AudioDeviceInfo.TYPE_WIRED_HEADSET -> "Headset mic"
+                AudioDeviceInfo.TYPE_USB_DEVICE,
                 AudioDeviceInfo.TYPE_USB_HEADSET,
-                -> "Headset mic"
+                AudioDeviceInfo.TYPE_USB_ACCESSORY,
+                -> "USB mic"
                 AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> "Bluetooth"
-                AudioDeviceInfo.TYPE_TELEPHONY -> "Phone"
-                else -> "Input"
+                else ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                        info.type == AudioDeviceInfo.TYPE_BLE_HEADSET
+                    ) {
+                        "BLE headset"
+                    } else {
+                        "Input"
+                    }
             }
         return buildString {
             if (prod.isNotEmpty()) {
@@ -91,5 +101,56 @@ class RecordingDeviceRepository(context: Context) {
             append(info.id)
             append(")")
         }
+    }
+
+    companion object {
+
+        /** Typy wejść pokazywane i dostępne do nagrywania. */
+        fun isWhitelistedInputType(type: Int): Boolean {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                type == AudioDeviceInfo.TYPE_BLE_HEADSET
+            ) {
+                return true
+            }
+            return when (type) {
+                AudioDeviceInfo.TYPE_BUILTIN_MIC,
+                AudioDeviceInfo.TYPE_WIRED_HEADSET,
+                AudioDeviceInfo.TYPE_USB_DEVICE,
+                AudioDeviceInfo.TYPE_USB_HEADSET,
+                AudioDeviceInfo.TYPE_USB_ACCESSORY,
+                AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+                -> true
+                else -> false
+            }
+        }
+
+        fun isUsbInputFamily(type: Int): Boolean =
+            type == AudioDeviceInfo.TYPE_USB_DEVICE ||
+                type == AudioDeviceInfo.TYPE_USB_HEADSET ||
+                type == AudioDeviceInfo.TYPE_USB_ACCESSORY
+
+        /**
+         * Domyślny wybór: USB (dowolna rodzina) → przewodowy headset → pierwszy wbudowany mikrofon
+         * → pierwszy z whitelistowanej listy.
+         */
+        fun defaultInputDeviceId(options: List<InputDeviceOption>): Int? {
+            if (options.isEmpty()) return null
+            options.firstOrNull { isUsbInputFamily(it.info.type) }?.let {
+                return it.info.id
+            }
+            options.firstOrNull { it.info.type == AudioDeviceInfo.TYPE_WIRED_HEADSET }?.let {
+                return it.info.id
+            }
+            options.firstOrNull { it.info.type == AudioDeviceInfo.TYPE_BUILTIN_MIC }?.let {
+                return it.info.id
+            }
+            return options.first().info.id
+        }
+
+        fun firstBuiltinMicId(options: List<InputDeviceOption>): Int? =
+            options.firstOrNull { it.info.type == AudioDeviceInfo.TYPE_BUILTIN_MIC }?.info?.id
+
+        fun listHasUsbFamily(options: List<InputDeviceOption>): Boolean =
+            options.any { isUsbInputFamily(it.info.type) }
     }
 }

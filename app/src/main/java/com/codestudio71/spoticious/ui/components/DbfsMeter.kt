@@ -3,9 +3,8 @@ package com.codestudio71.spoticious.ui.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,6 +15,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,29 +33,33 @@ fun DbfsMeter(
     peakDbfs: Float,
     modifier: Modifier = Modifier,
 ) {
+    val density = LocalDensity.current
     val clipped = currentDbfs.coerceIn(-60f, 0f)
-    val label =
-        String.format(Locale.US, "%.1f", clipped)
+    val label = String.format(Locale.US, "%.1f", clipped)
 
     Column(
         modifier =
             modifier
-                .width(28.dp)
-                .fillMaxHeight(),
+                .padding(start = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = label,
-            color = if (currentDbfs > -1f) Color(0xFFFF1744) else Color.White,
+            color =
+                if (currentDbfs > -1f) {
+                    Color(0xFFFF1744)
+                } else {
+                    Color.White
+                },
             fontFamily = FontFamily.Monospace,
-            fontSize = 12.sp,
+            fontSize = 11.sp,
         )
         Spacer(Modifier.height(4.dp))
         Canvas(
             modifier =
                 Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(),
+                    .width(12.dp)
+                    .weight(1f),
         ) {
             val w = size.width
             val h = size.height
@@ -78,7 +82,7 @@ fun DbfsMeter(
 
             val peakFrac = ((peakDbfs.coerceIn(-60f, 0f)) + 60f) / 60f
             val yPeak = (h - peakFrac * h).coerceIn(0f, h)
-            val strokePx = 2.dp.toPx()
+            val strokePx = with(density) { 2.dp.toPx() }
             drawLine(
                 color = Color.White.copy(alpha = 0.92f),
                 start = Offset(0f, yPeak),

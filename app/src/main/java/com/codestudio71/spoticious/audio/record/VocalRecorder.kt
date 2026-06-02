@@ -64,6 +64,7 @@ class VocalRecorder {
 
     @Volatile var onWaveformFrame24: ((ByteArray, Int) -> Unit)? = null
 
+    /** Mono PCM ([AudioFormat.CHANNEL_IN_MONO]); jedna aktywna sesja naraz i jedno [preferredDevice]. */
     fun start(
         outputFile: File,
         sampleRate: Int,
@@ -274,6 +275,13 @@ class VocalRecorder {
 
         _state.value = RecordingState.Idle
         scopeCallback?.invoke(null)
+    }
+
+    /** Przejście Saved → Idle po zapisie do MediaStore lub usunięciu pliku przez UI. */
+    fun discardSavedToIdle() {
+        if (_state.value is RecordingState.Saved) {
+            _state.value = RecordingState.Idle
+        }
     }
 
     private fun teardownAfterFailure() {

@@ -36,6 +36,11 @@
     <string name="record_add_beat">Dodaj bit (plik audio)</string>
     <string name="record_save">Zapisz do Muzyka</string>
     <string name="record_share">Udostępnij</string>
+    <string name="record_name_placeholder">Nazwa nagrania</string>
+    <string name="record_saved_named">Zapisano: %1$s</string>
+    <string name="record_delete">Usuń</string>
+    <string name="record_delete_confirm">Usunąć nagranie \"%1$s\"?</string>
+    <string name="record_delete_delete">Usuń</string>
     <string name="record_error_start">Nie można nagrać. Sprawdź uprawnienie mikrofonu.</string>
     <string name="record_save_nothing">Brak pliku nagrania do zapisu.</string>
     <string name="record_saved_ok">Zapisano: Muzyka / Spoticious</string>
@@ -43,6 +48,7 @@
     <string name="record_headset_title">Lepiej ze słuchawkami</string>
     <string name="record_headset_body">Bit będzie leciał z głośnika, a mikrofon jednocześnie nagrywa. Czystszy dźwięk zazwyczaj ze słuchawkami przewodowymi lub Bluetooth.</string>
     <string name="record_headset_continue">Nagraj mimo to</string>
+    <string name="record_switched_usb_mic">Przełączono na mikrofon USB</string>
     <string name="coming_soon">Wkrótce</string>
     <string name="playlist">Playlista</string>
     <string name="playlist_queue">Kolejka odtwarzania</string>
