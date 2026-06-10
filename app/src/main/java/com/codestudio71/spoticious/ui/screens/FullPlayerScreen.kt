@@ -44,7 +44,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import android.content.ContentUris
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -113,10 +112,6 @@ fun FullPlayerScreen(
     var masterDataEnabled by rememberSaveable(masterDataSaveKey) { mutableStateOf(false) }
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     val sleepTimerRemaining by viewModel.sleepTimerRemainingMinutes.collectAsState()
-
-    LaunchedEffect(Unit) {
-        Log.d("R3Trace", "FullPlayerScreen first composition: selectedUri=$selectedUri")
-    }
 
     if (showSleepTimerDialog) {
         SleepTimerDialog(

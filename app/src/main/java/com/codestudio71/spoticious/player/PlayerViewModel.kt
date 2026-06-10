@@ -166,11 +166,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                         val pl = _currentPlaylist.value
                         val currentIndex = _currentIndex.value
                         val lastIndex = pl.lastIndex
-                        Log.d(
-                            "RepeatMode",
-                            "State: ${_repeatMode.value}, player.mode=${player.repeatMode}, " +
-                                "currentIndex=$currentIndex, lastIndex=$lastIndex"
-                        )
                         when (_repeatMode.value) {
                             Player.REPEAT_MODE_OFF -> {
                                 if (_shuffleEnabled.value || currentIndex < lastIndex) {
@@ -264,9 +259,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 prefs[EqPrefKeys.PREAMP] = preamp
                 bands.forEachIndexed { i, g -> prefs[EqPrefKeys.band(i)] = g }
             }
-            Log.d("EqPersist", "migrate legacy eq_json enabled=$inferredOn preamp=$preamp bands=$bands")
-        } catch (e: Exception) {
-            Log.d("EqPersist", "migrate legacy skipped: ${e.message}")
+        } catch (_: Exception) {
         }
     }
 
@@ -279,10 +272,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             (prefs[EqPrefKeys.band(i)] ?: 0f).coerceIn(-15f, 15f)
         }
         _eqBandGains.value = bands
-        Log.d(
-            "EqPersist",
-            "restore DataStore enabled=${_eqEnabled.value} preamp=${_eqPreampDb.value} bands=$bands"
-        )
     }
 
     private suspend fun persistEqToDataStore() {
@@ -293,10 +282,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 prefs[EqPrefKeys.band(i)] = g.coerceIn(-15f, 15f)
             }
         }
-        Log.d(
-            "EqPersist",
-            "save enabled=${_eqEnabled.value} preamp=${_eqPreampDb.value} bands=${_eqBandGains.value}"
-        )
     }
 
     private fun applyEqStateToProcessor() {
@@ -304,10 +289,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         proc.eqEnabled = _eqEnabled.value
         proc.setPreamp(_eqPreampDb.value)
         _eqBandGains.value.forEachIndexed { i, g -> proc.setBandGain(i, g) }
-        Log.d(
-            "EqPersist",
-            "apply processor enabled=${_eqEnabled.value} preamp=${_eqPreampDb.value}"
-        )
     }
 
     private fun persistEqImmediate() {
@@ -540,18 +521,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun selectFile(uri: Uri, displayName: String?, autoplay: Boolean = true) {
-        if (isCurrentTrackUri(uri)) {
-            Log.d("R3Trace", "PlayerViewModel.selectFile SKIP (same track): uri=$uri")
-            return
-        }
+        if (isCurrentTrackUri(uri)) return
         selectFileInternal(uri, displayName ?: defaultTrackName(), autoplay)
     }
 
     fun selectFileWithPlaylist(uri: Uri, displayName: String?, playlist: List<Pair<Uri, String>>, index: Int) {
-        if (isCurrentTrackUri(uri)) {
-            Log.d("R3Trace", "PlayerViewModel.selectFileWithPlaylist SKIP (same track): uri=$uri")
-            return
-        }
+        if (isCurrentTrackUri(uri)) return
         _currentPlaylist.value = playlist
         _currentIndex.value = index.coerceIn(0, playlist.size - 1)
         selectFileInternal(uri, displayName ?: defaultTrackName(), autoplay = true)
@@ -569,10 +544,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun selectFileInternal(uri: Uri, name: String, autoplay: Boolean) {
-        Log.d(
-            "R3Trace",
-            "PlayerViewModel.selectFileInternal CALLED: uri=$uri, stack=${Exception().stackTraceToString().take(500)}"
-        )
         player.stop()
         _selectedUri.value = uri
         _fileName.value = name
@@ -761,7 +732,6 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         val app = getApplication<Application>()
-        Log.d("MasterDataAnalyzer", "loadMasterData: uri=$uri (repository)")
         val durationMs = player.duration.coerceAtLeast(0L)
         val tooLong = app.getString(R.string.master_data_track_too_long)
         MasterDataRepository.requestAnalysis(app, uri, durationMs, tooLong)

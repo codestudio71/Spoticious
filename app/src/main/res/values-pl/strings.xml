@@ -76,6 +76,27 @@
     <string name="contact">Kontakt</string>
     <string name="github">GitHub</string>
     <string name="link_copied">Link skopiowany</string>
+    <string name="audio_cut">Cięcie audio</string>
+    <string name="audio_cut_subtitle">Wycinaj i eksportuj fragmenty</string>
+    <string name="audio_cut_title">Cięcie audio</string>
+    <string name="audio_cut_pick_file">Wybierz plik audio</string>
+    <string name="audio_cut_idle_hint">Wybierz plik audio, aby zobaczyć waveform i ustawić punkty cięcia.</string>
+    <string name="audio_cut_loading">Analiza audio…</string>
+    <string name="audio_cut_error">Nie udało się odczytać tego pliku audio.</string>
+    <string name="audio_cut_from">Od</string>
+    <string name="audio_cut_to">Do</string>
+    <string name="audio_cut_add_segment">Dodaj fragment</string>
+    <string name="audio_cut_segments">Fragmenty</string>
+    <string name="audio_cut_segment_name">Nazwa</string>
+    <string name="audio_cut_segment_default">Fragment %1$d</string>
+    <string name="audio_cut_export">Eksportuj</string>
+    <string name="audio_cut_export_failed">Eksport nie powiódł się</string>
+    <string name="audio_cut_waveform">Waveform</string>
+    <string name="audio_cut_edit_unit_title">Ustaw %1$s</string>
+    <string name="audio_cut_unit_hours">godziny</string>
+    <string name="audio_cut_unit_minutes">minuty</string>
+    <string name="audio_cut_unit_seconds">sekundy</string>
+    <string name="audio_cut_unit_millis">milisekundy</string>
     <string name="app_version_label">wersja %1$s</string>
 
     <!-- PlaylistScreen -->

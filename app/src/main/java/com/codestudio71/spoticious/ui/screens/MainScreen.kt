@@ -1,6 +1,5 @@
 package com.codestudio71.spoticious.ui.screens
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -80,6 +79,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
     var showPlaylistScreen by remember { mutableStateOf(false) }
     var showRecordPreview by remember { mutableStateOf(false) }
     var showWrapped by remember { mutableStateOf(false) }
+    var showAudioCut by remember { mutableStateOf(false) }
     var searchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var sortMode by remember { mutableStateOf(TrackSortOrder.NAME_ASC) }
@@ -88,7 +88,6 @@ fun MainScreen(modifier: Modifier = Modifier) {
     val foldersViewModel: FoldersViewModel = viewModel()
 
     val openFullPlayer: () -> Unit = {
-        Log.d("R3Trace", "MainScreen setShowFullPlayer(true): selectedUri=${playerViewModel.selectedUri.value}")
         showFullPlayer = true
     }
 
@@ -100,13 +99,20 @@ fun MainScreen(modifier: Modifier = Modifier) {
         foldersViewModel.loadAudioFilesIfPermitted()
     }
 
+    val immersiveExtraScreen = showRecordPreview || showAudioCut
+
     BackHandler(enabled = showRecordPreview && showExtraScreen) {
         showRecordPreview = false
+    }
+    BackHandler(enabled = showAudioCut && showExtraScreen) {
+        showAudioCut = false
     }
     BackHandler(enabled = showWrapped && showExtraScreen) {
         showWrapped = false
     }
-    BackHandler(enabled = showExtraScreen && !showRecordPreview && !showWrapped) {
+    BackHandler(
+        enabled = showExtraScreen && !showRecordPreview && !showWrapped && !showAudioCut,
+    ) {
         showExtraScreen = false
     }
     BackHandler(enabled = searchExpanded && !showExtraScreen) {
@@ -124,7 +130,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxSize(),
             containerColor = Color.Transparent,
             topBar = {
-                if (!(showExtraScreen && showRecordPreview)) {
+                if (!(showExtraScreen && immersiveExtraScreen)) {
                     MainTopBar(
                         selectedTab = selectedTab,
                         searchExpanded = searchExpanded,
@@ -143,6 +149,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                             showRecordPreview = false
                             showPlaylistScreen = false
                             showWrapped = false
+                            showAudioCut = false
                             showExtraScreen = true
                         },
                         sortMode = sortMode,
@@ -153,7 +160,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                 }
             },
             bottomBar = {
-                if (!(showExtraScreen && showRecordPreview)) {
+                if (!(showExtraScreen && immersiveExtraScreen)) {
                     Column {
                         MiniPlayer(
                             viewModel = playerViewModel,
@@ -246,6 +253,12 @@ fun MainScreen(modifier: Modifier = Modifier) {
                             modifier = Modifier.fillMaxSize(),
                         )
 
+                    showAudioCut ->
+                        AudioCutScreen(
+                            onBack = { showAudioCut = false },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+
                     showPlaylistScreen ->
                         PlaylistScreen(
                             viewModel = playerViewModel,
@@ -258,17 +271,26 @@ fun MainScreen(modifier: Modifier = Modifier) {
                             onPlaylistClick = {
                                 showRecordPreview = false
                                 showWrapped = false
+                                showAudioCut = false
                                 showPlaylistScreen = true
                             },
                             onRecordPreviewClick = {
                                 showPlaylistScreen = false
                                 showWrapped = false
+                                showAudioCut = false
                                 showRecordPreview = true
                             },
                             onWrappedClick = {
                                 showRecordPreview = false
                                 showPlaylistScreen = false
+                                showAudioCut = false
                                 showWrapped = true
+                            },
+                            onAudioCutClick = {
+                                showRecordPreview = false
+                                showPlaylistScreen = false
+                                showWrapped = false
+                                showAudioCut = true
                             },
                         )
                 }

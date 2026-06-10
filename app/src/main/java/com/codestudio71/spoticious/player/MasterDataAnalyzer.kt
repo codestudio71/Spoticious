@@ -47,31 +47,22 @@ object MasterDataAnalyzer {
 
     fun analyze(context: Context, uri: Uri, onProgress: (Float) -> Unit = {}): MasterData? {
         return try {
-            Log.d(TAG, "analyze: uri=$uri")
             onProgress(0f)
-            try {
-                val wavResult = decodeWavStreaming(context, uri, onProgress)
-                if (wavResult != null) {
-                    Log.d(TAG, "analyze: WAV streaming succeeded")
-                    onProgress(1f)
-                    return wavResult
-                }
-                Log.d(TAG, "analyze: WAV failed, trying MediaCodec streaming")
-                onProgress(0f)
-                val codecResult = decodeWithMediaCodecStreaming(context, uri, onProgress)
-                if (codecResult != null) Log.d(TAG, "analyze: MediaCodec streaming succeeded")
+            val wavResult = decodeWavStreaming(context, uri, onProgress)
+            if (wavResult != null) {
                 onProgress(1f)
-                codecResult
-            } catch (e: OutOfMemoryError) {
-                Log.e(TAG, "OOM - file too large")
-                null
-            } catch (e: Exception) {
-                Log.e(TAG, "analyze: exception", e)
-                null
+                return wavResult
             }
-        } catch (t: Throwable) {
-            Log.e("MDDiag", "analyze() THREW", t)
-            throw t
+            onProgress(0f)
+            val codecResult = decodeWithMediaCodecStreaming(context, uri, onProgress)
+            onProgress(1f)
+            codecResult
+        } catch (e: OutOfMemoryError) {
+            Log.e(TAG, "OOM - file too large")
+            null
+        } catch (e: Exception) {
+            Log.e(TAG, "analyze failed", e)
+            null
         }
     }
 
@@ -161,7 +152,6 @@ object MasterDataAnalyzer {
         val p = formatGetIntOrNull(format, MediaFormat.KEY_ENCODER_PADDING) ?: 0
         val effD = if (d > 0) d else 2200
         val effP = if (p > 0) p else 1500
-        Log.d(TAG, "Encoder delay skipped: $effD, padding skipped: $effP")
         return effD to effP
     }
 
@@ -610,7 +600,6 @@ object MasterDataAnalyzer {
             }
 
             val (blocks, peak, clips) = processor.finish()
-            Log.d(TAG, "decodeWithMediaCodecStreaming: ${blocks.size} blocks")
             computeMasterDataFromBlocks(blocks, peak, clips)
         } catch (e: OutOfMemoryError) {
             Log.e(TAG, "decodeWithMediaCodecStreaming: OOM")

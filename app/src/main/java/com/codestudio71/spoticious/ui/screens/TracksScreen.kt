@@ -3,7 +3,6 @@ package com.codestudio71.spoticious.ui.screens
 import android.app.Activity
 import android.app.Application
 import android.os.Build
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -439,12 +438,7 @@ fun TracksScreen(
                             file = file,
                             isSelected = playerViewModel.isCurrentTrackUri(file.uri),
                             onClick = {
-                                val isCurrent = playerViewModel.isCurrentTrackUri(file.uri)
-                                Log.d(
-                                    "R3Trace",
-                                    "TracksScreen onClick: uri=${file.uri}, selected=${playerViewModel.selectedUri.value}, isCurrent=$isCurrent"
-                                )
-                                if (!isCurrent) {
+                                if (!playerViewModel.isCurrentTrackUri(file.uri)) {
                                     val playlist = filteredFiles.map { f -> f.uri to f.displayName }
                                     playerViewModel.selectFileWithPlaylist(
                                         file.uri,

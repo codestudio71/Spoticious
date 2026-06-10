@@ -3,7 +3,6 @@ package com.codestudio71.spoticious.player
 import android.app.Application
 import android.content.ContentUris
 import android.net.Uri
-import android.os.SystemClock
 import android.util.Log
 import com.codestudio71.spoticious.SpoticiousApplication
 import java.util.concurrent.ConcurrentHashMap
@@ -32,6 +31,8 @@ data class MasterDataEntry(
 
 object MasterDataRepository {
 
+    private const val TAG = "MasterDataRepository"
+
     private const val MAX_CACHED_KEYS = 10
 
     /** Gdy Application jeszcze nie gotowe (testy / edge) — izolowany scope. */
@@ -49,11 +50,6 @@ object MasterDataRepository {
 
     private fun cancelAndRemoveJob(key: String, reason: String) {
         val j = jobs.remove(key) ?: return
-        val stack = Throwable("MDRepo cancel caller trace: $reason").stackTraceToString().take(1200)
-        Log.w(
-            "MDRepo",
-            "[${System.currentTimeMillis()}] job CANCEL requested key=$key reason=$reason\n$stack"
-        )
         j.cancel(CancellationException(reason))
     }
 
@@ -118,7 +114,6 @@ object MasterDataRepository {
         } else {
             _entries.update { m -> m - keysToRemove }
         }
-        Log.d("MDRepo", "remove: uri=$uri removedKeys=$keysToRemove")
     }
 
     /**
@@ -129,57 +124,34 @@ object MasterDataRepository {
         val map = _entries.value
         val existing = entryFor(uri, map)
         val jobActive = hasActiveJobForUri(uri)
-        val tsReq = System.currentTimeMillis()
-        Log.d(
-            "MDRepo",
-            "[$tsReq] requestAnalysis: uri=$uri, key=$key, alreadyRunning=$jobActive, " +
-                "hasData=${existing?.data != null}, hasLoading=${existing?.loading == true}, " +
-                "jobs.containsKey(key)=${jobs.containsKey(key)}, " +
-                "scope=${if (SpoticiousApplication.instance != null) "Application" else "fallback"}"
-        )
 
         if (existing?.data != null) return
         if (jobActive) return
 
-        val t0 = SystemClock.elapsedRealtime()
-
         val job = processScope.launch {
-            val tsStart = System.currentTimeMillis()
-            Log.d("MDRepo", "[$tsStart] job STARTED: $uri (key=$key)")
             try {
                 if (durationMs > 10 * 60 * 1000L) {
                     mutate(key) {
                         it.copy(loading = false, error = tooLongMessage, progress = 0f, data = null)
                     }
-                    Log.d("MDRepo", "[${System.currentTimeMillis()}] entries emission: size=${_entries.value.size}")
-                    Log.d(
-                        "MDRepo",
-                        "[${System.currentTimeMillis()}] analysis DONE (too long): $uri, took=${SystemClock.elapsedRealtime() - t0}ms"
-                    )
                     return@launch
                 }
                 mutate(key) {
                     MasterDataEntry(loading = true, error = null, progress = 0f, data = null)
                 }
-                Log.d("MDRepo", "[${System.currentTimeMillis()}] entries emission: size=${_entries.value.size}")
                 val result = try {
                     MasterDataAnalyzer.analyze(app, uri) { p ->
                         val clamped = p.coerceIn(0f, 1f)
-                        Log.d("MDRepo", "[${System.currentTimeMillis()}] progress: $uri = $clamped")
                         mutate(key) { e -> e.copy(progress = clamped) }
                     }
                 } catch (t: Throwable) {
-                    Log.e("MDRepo", "[${System.currentTimeMillis()}] analyze failed for $uri", t)
+                    Log.e(TAG, "analyze failed for $uri", t)
                     null
                 }
                 mutate(key) { e ->
                     e.copy(loading = false, progress = 1f, data = result, error = e.error)
                 }
-                Log.d("MDRepo", "[${System.currentTimeMillis()}] entries emission: size=${_entries.value.size}")
-                Log.d("MDRepo", "[${System.currentTimeMillis()}] analysis DONE: $uri, took=${SystemClock.elapsedRealtime() - t0}ms")
             } catch (e: CancellationException) {
-                val trace = Throwable("MDRepo cancellation stack").stackTraceToString().take(1500)
-                Log.d("MDRepo", "[${System.currentTimeMillis()}] job CANCELLED (catch): $uri, cause=$e\n$trace")
                 throw e
             } finally {
                 jobs.remove(key)
@@ -187,14 +159,8 @@ object MasterDataRepository {
         }
         jobs[key] = job
         job.invokeOnCompletion { cause ->
-            val ts = System.currentTimeMillis()
-            when (cause) {
-                null -> Log.d("MDRepo", "[$ts] job COMPLETED (invokeOnCompletion): $uri")
-                is CancellationException -> {
-                    val trace = cause.stackTraceToString().take(800)
-                    Log.d("MDRepo", "[$ts] job CANCELLED (invokeOnCompletion): $uri, cause=$cause trace=$trace")
-                }
-                else -> Log.e("MDRepo", "[$ts] job FAILED (invokeOnCompletion): $uri", cause)
+            if (cause != null && cause !is CancellationException) {
+                Log.e(TAG, "analysis job failed for $uri", cause)
             }
         }
     }

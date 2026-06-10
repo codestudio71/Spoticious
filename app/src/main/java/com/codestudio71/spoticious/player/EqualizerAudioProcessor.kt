@@ -1,6 +1,5 @@
 package com.codestudio71.spoticious.player
 
-import android.util.Log
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.audio.AudioProcessor
 import com.google.android.exoplayer2.audio.BaseAudioProcessor
@@ -17,8 +16,6 @@ import kotlin.math.sqrt
 class EqualizerAudioProcessor : BaseAudioProcessor() {
 
     companion object {
-        private const val TAG = "EQ_DSP"
-
         val BAND_FREQUENCIES_HZ = intArrayOf(
             31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000
         )
@@ -148,8 +145,6 @@ class EqualizerAudioProcessor : BaseAudioProcessor() {
     }
 
     override fun queueInput(inputBuffer: ByteBuffer) {
-        Log.d(TAG, "queueInput called, enabled=$eqEnabled, preamp=$preampDb, band0=${bands[0].gainDb}")
-
         val size = inputBuffer.remaining()
         if (size == 0) return
 

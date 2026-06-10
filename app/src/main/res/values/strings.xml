@@ -76,6 +76,27 @@
     <string name="contact">Contact</string>
     <string name="github">GitHub</string>
     <string name="link_copied">Link copied</string>
+    <string name="audio_cut">Audio Cut</string>
+    <string name="audio_cut_subtitle">Trim and export clips</string>
+    <string name="audio_cut_title">Audio Cut</string>
+    <string name="audio_cut_pick_file">Choose audio file</string>
+    <string name="audio_cut_idle_hint">Pick an audio file to see the waveform and set cut points.</string>
+    <string name="audio_cut_loading">Analyzing audio…</string>
+    <string name="audio_cut_error">Could not read this audio file.</string>
+    <string name="audio_cut_from">From</string>
+    <string name="audio_cut_to">To</string>
+    <string name="audio_cut_add_segment">Add segment</string>
+    <string name="audio_cut_segments">Segments</string>
+    <string name="audio_cut_segment_name">Name</string>
+    <string name="audio_cut_segment_default">Clip %1$d</string>
+    <string name="audio_cut_export">Export</string>
+    <string name="audio_cut_export_failed">Export failed</string>
+    <string name="audio_cut_waveform">Waveform</string>
+    <string name="audio_cut_edit_unit_title">Set %1$s</string>
+    <string name="audio_cut_unit_hours">hours</string>
+    <string name="audio_cut_unit_minutes">minutes</string>
+    <string name="audio_cut_unit_seconds">seconds</string>
+    <string name="audio_cut_unit_millis">milliseconds</string>
     <string name="app_version_label">version %1$s</string>
 
     <!-- PlaylistScreen -->

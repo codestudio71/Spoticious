@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Mic
@@ -55,6 +56,7 @@ fun ExtraScreen(
     onPlaylistClick: () -> Unit,
     onRecordPreviewClick: () -> Unit,
     onWrappedClick: () -> Unit,
+    onAudioCutClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -112,6 +114,12 @@ fun ExtraScreen(
                 title = stringResource(R.string.playlist),
                 subtitle = stringResource(R.string.playlist_queue),
                 onClick = onPlaylistClick
+            )
+            ExtraCard(
+                icon = Icons.Default.ContentCut,
+                title = stringResource(R.string.audio_cut),
+                subtitle = stringResource(R.string.audio_cut_subtitle),
+                onClick = onAudioCutClick,
             )
         }
 
