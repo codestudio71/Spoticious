@@ -2,7 +2,7 @@
     <string name="app_name">Spoticious</string>
 
     <!-- MainScreen / Navigation -->
-    <string name="search">Szukaj</string>
+    <string name="search">SZUKAJ</string>
     <string name="search_placeholder">Wpisz tytuł lub nazwę…</string>
     <string name="close">Zamknij</string>
     <string name="extra">EXTRA</string>
@@ -48,6 +48,7 @@
     <string name="record_output_beat">Wyjście beatu</string>
     <string name="record_choose_output">Wybierz wyjście</string>
     <string name="record_add_beat">Dodaj bit (plik audio)</string>
+    <string name="record_beat_volume">Głośność bitu</string>
     <string name="record_save">Zapisz do Muzyka</string>
     <string name="record_share">Udostępnij</string>
     <string name="record_name_placeholder">Nazwa nagrania</string>

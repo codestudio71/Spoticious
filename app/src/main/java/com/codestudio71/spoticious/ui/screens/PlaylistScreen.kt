@@ -58,7 +58,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -356,9 +355,7 @@ fun PlaylistScreen(
 
     // --- GŁÓWNE TŁO ---
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF0D1117), Color(0xFF1A1F26), Color(0xFF151A22))))
+        modifier = modifier.fillMaxSize(),
     ) {
 
         // --- 3A. WIDOK SZCZEGÓŁÓW PLAYLISTY ---

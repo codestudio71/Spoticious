@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -36,8 +37,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -62,8 +61,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -75,20 +74,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlin.math.roundToInt
 import com.codestudio71.spoticious.R
 import com.codestudio71.spoticious.audio.record.RecordMode
 import com.codestudio71.spoticious.audio.record.RecordViewModel
 import com.codestudio71.spoticious.audio.record.RecordingState
+import com.codestudio71.spoticious.ui.components.MiamiFrame
 import com.codestudio71.spoticious.ui.components.WaveformWithMeter
 import java.util.Locale
 
 private val CyanUi = Color(0xFF00BCD4)
-private val BgGrad =
-    listOf(
-        Color(0xFF0D0D1A),
-        Color(0xFF1A0A2E),
-        Color(0xFF2D1B4E),
-    )
 private val RecRed = Color(0xFFFF1744)
 private val DarkOnCyan = Color(0xFF0D0D1A)
 
@@ -112,6 +107,7 @@ fun RecordPreviewScreen(
     val recState by viewModel.recordingState.collectAsState()
     val beatUri by viewModel.selectedBeatUri.collectAsState()
     val beatName by viewModel.beatLabel.collectAsState()
+    val beatGain by viewModel.beatGain.collectAsState()
     val inputDevices by viewModel.inputDevices.collectAsState()
     val pickedLabel by viewModel.pickedInputLabel.collectAsState()
     val outputDevices by viewModel.outputDevices.collectAsState()
@@ -221,7 +217,6 @@ fun RecordPreviewScreen(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(BgGrad))
                 .statusBarsPadding()
                 .verticalScroll(scrollState)
                 .navigationBarsPadding()
@@ -300,57 +295,54 @@ fun RecordPreviewScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        Card(
+        MiamiFrame(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
-            border = BorderStroke(1.dp, CyanUi.copy(alpha = 0.5f)),
-            shape = RoundedCornerShape(12.dp),
+            contentPadding = 16.dp,
+            solidFill = false,
         ) {
-            Column(Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Mic,
-                        contentDescription = null,
-                        tint = CyanUi,
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
-                    Text(
-                        stringResource(R.string.record_input_mic),
-                        color = Color.White,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
-                Text(
-                    selectedDeviceName,
-                    color = Color.Gray,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(top = 8.dp),
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Mic,
+                    contentDescription = null,
+                    tint = CyanUi,
+                    modifier = Modifier.padding(end = 8.dp),
                 )
-                Spacer(Modifier.height(8.dp))
-                Box(Modifier.fillMaxWidth()) {
-                    OutlinedButton(
-                        onClick = { deviceMenu = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        border = BorderStroke(1.dp, CyanUi),
-                        colors =
-                            ButtonDefaults.outlinedButtonColors(contentColor = CyanUi),
-                    ) {
-                        Text(stringResource(R.string.record_choose_input))
-                    }
-                    DropdownMenu(
-                        expanded = deviceMenu,
-                        onDismissRequest = { deviceMenu = false },
-                        modifier = Modifier.background(Color(0xFF1A1F26)),
-                    ) {
-                        inputDevices.forEach { opt ->
-                            DropdownMenuItem(
-                                text = { Text(opt.label, color = Color.White) },
-                                onClick = {
-                                    viewModel.setSelectedDevice(opt.info.id)
-                                    deviceMenu = false
-                                },
-                            )
-                        }
+                Text(
+                    stringResource(R.string.record_input_mic),
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+            Text(
+                selectedDeviceName,
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 14.sp,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+            Spacer(Modifier.height(8.dp))
+            Box(Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = { deviceMenu = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    border = BorderStroke(1.dp, CyanUi),
+                    colors =
+                        ButtonDefaults.outlinedButtonColors(contentColor = CyanUi),
+                ) {
+                    Text(stringResource(R.string.record_choose_input))
+                }
+                DropdownMenu(
+                    expanded = deviceMenu,
+                    onDismissRequest = { deviceMenu = false },
+                    modifier = Modifier.background(Color(0xFF1A1F26)),
+                ) {
+                    inputDevices.forEach { opt ->
+                        DropdownMenuItem(
+                            text = { Text(opt.label, color = Color.White) },
+                            onClick = {
+                                viewModel.setSelectedDevice(opt.info.id)
+                                deviceMenu = false
+                            },
+                        )
                     }
                 }
             }
@@ -359,67 +351,64 @@ fun RecordPreviewScreen(
         if (isFreestyle) {
             Spacer(Modifier.height(16.dp))
 
-            Card(
+            MiamiFrame(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
-                border = BorderStroke(1.dp, CyanUi.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(12.dp),
+                contentPadding = 16.dp,
+                solidFill = false,
             ) {
-                Column(Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            outputIcon,
-                            contentDescription = null,
-                            tint = CyanUi,
-                            modifier = Modifier.padding(end = 8.dp),
-                        )
-                        Text(
-                            stringResource(R.string.record_output_beat),
-                            color = Color.White,
-                            fontWeight = FontWeight.Medium,
-                        )
-                    }
-                    Text(
-                        selectedOutputName,
-                        color = Color.Gray,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(top = 8.dp),
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        outputIcon,
+                        contentDescription = null,
+                        tint = CyanUi,
+                        modifier = Modifier.padding(end = 8.dp),
                     )
-                    Spacer(Modifier.height(8.dp))
-                    Box(Modifier.fillMaxWidth()) {
-                        OutlinedButton(
-                            onClick = { outputDeviceMenu = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            border = BorderStroke(1.dp, CyanUi),
-                            colors =
-                                ButtonDefaults.outlinedButtonColors(contentColor = CyanUi),
-                        ) {
-                            Text(stringResource(R.string.record_choose_output))
-                        }
-                        DropdownMenu(
-                            expanded = outputDeviceMenu,
-                            onDismissRequest = { outputDeviceMenu = false },
-                            modifier = Modifier.background(Color(0xFF1A1F26)),
-                        ) {
-                            outputDevices.forEach { opt ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                beatOutputIcon(opt.info.type),
-                                                contentDescription = null,
-                                                tint = CyanUi,
-                                                modifier = Modifier.padding(end = 8.dp),
-                                            )
-                                            Text(opt.label, color = Color.White)
-                                        }
-                                    },
-                                    onClick = {
-                                        viewModel.setOutputDevice(opt.info)
-                                        outputDeviceMenu = false
-                                    },
-                                )
-                            }
+                    Text(
+                        stringResource(R.string.record_output_beat),
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+                Text(
+                    selectedOutputName,
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                Spacer(Modifier.height(8.dp))
+                Box(Modifier.fillMaxWidth()) {
+                    OutlinedButton(
+                        onClick = { outputDeviceMenu = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        border = BorderStroke(1.dp, CyanUi),
+                        colors =
+                            ButtonDefaults.outlinedButtonColors(contentColor = CyanUi),
+                    ) {
+                        Text(stringResource(R.string.record_choose_output))
+                    }
+                    DropdownMenu(
+                        expanded = outputDeviceMenu,
+                        onDismissRequest = { outputDeviceMenu = false },
+                        modifier = Modifier.background(Color(0xFF1A1F26)),
+                    ) {
+                        outputDevices.forEach { opt ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            beatOutputIcon(opt.info.type),
+                                            contentDescription = null,
+                                            tint = CyanUi,
+                                            modifier = Modifier.padding(end = 8.dp),
+                                        )
+                                        Text(opt.label, color = Color.White)
+                                    }
+                                },
+                                onClick = {
+                                    viewModel.setOutputDevice(opt.info)
+                                    outputDeviceMenu = false
+                                },
+                            )
                         }
                     }
                 }
@@ -430,26 +419,74 @@ fun RecordPreviewScreen(
 
         if (isFreestyle) {
             if (beatUri != null) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        beatName ?: "—",
-                        color = Color.White,
-                        modifier = Modifier.weight(1f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        fontSize = 15.sp,
-                    )
-                    IconButton(
-                        onClick = { viewModel.clearBeat() },
-                        enabled = !beatUiLocked,
+                Column(Modifier.fillMaxWidth()) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = stringResource(R.string.close),
-                            tint = CyanUi,
+                        Text(
+                            beatName ?: "—",
+                            color = Color.White,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontSize = 15.sp,
+                        )
+                        IconButton(
+                            onClick = { viewModel.clearBeat() },
+                            enabled = !beatUiLocked,
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = stringResource(R.string.close),
+                                tint = CyanUi,
+                            )
+                        }
+                    }
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(R.string.record_beat_volume),
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            modifier = Modifier.width(72.dp),
+                        )
+                        Slider(
+                            value = beatGain,
+                            onValueChange = { viewModel.setBeatGain(it) },
+                            valueRange = 0f..1f,
+                            modifier = Modifier.weight(1f),
+                            colors =
+                                SliderDefaults.colors(
+                                    thumbColor = Color(0xFFFF4DB8),
+                                    activeTrackColor = Color(0xFF00E5FF),
+                                    inactiveTrackColor = Color(0xFF333333),
+                                ),
+                            thumb = {
+                                Box(
+                                    modifier =
+                                        Modifier
+                                            .size(24.dp)
+                                            .shadow(
+                                                elevation = 4.dp,
+                                                shape = CircleShape,
+                                                ambientColor = Color(0xFFFF4DB8),
+                                                spotColor = Color(0xFFFF4DB8),
+                                            )
+                                            .background(
+                                                color = Color(0xFFFF4DB8),
+                                                shape = CircleShape,
+                                            ),
+                                )
+                            },
+                        )
+                        Text(
+                            "${(beatGain * 100).roundToInt()}%",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            modifier = Modifier.width(40.dp),
                         )
                     }
                 }

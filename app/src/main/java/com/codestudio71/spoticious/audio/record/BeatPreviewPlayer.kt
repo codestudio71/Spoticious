@@ -155,6 +155,11 @@ class BeatPreviewPlayer(context: Context) {
         applyPreferredOutputDevice()
     }
 
+    /** Głośność podglądu beatu (0..1) — żeby preview brzmiał jak mix. */
+    fun setVolume(volume: Float) {
+        player.volume = volume.coerceIn(0f, 1f)
+    }
+
     private fun applyPreferredOutputDevice() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
         try {

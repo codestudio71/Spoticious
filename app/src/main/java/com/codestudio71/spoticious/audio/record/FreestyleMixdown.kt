@@ -1,6 +1,7 @@
 package com.codestudio71.spoticious.audio.record
 
 import android.content.Context
+import android.media.AudioFormat
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
@@ -28,6 +29,7 @@ object FreestyleMixdown {
         vocalWav: File,
         beatUri: Uri,
         targetSampleRate: Int,
+        beatGain: Float = BEAT_GAIN,
     ): Boolean {
         val vocal = readMonoPcmWav(vocalWav) ?: return false
         if (vocal.samples.isEmpty()) return false
@@ -42,7 +44,7 @@ object FreestyleMixdown {
                 vocalSamples = vocal.samples,
                 beatSamples = beatMono,
                 vocalGain = VOCAL_GAIN,
-                beatGain = BEAT_GAIN,
+                beatGain = beatGain.coerceIn(0f, 1f),
             )
 
         return writeMonoPcmWav(vocalWav, mixed, rate, vocal.bitsPerSample)
@@ -213,24 +215,29 @@ private object BeatPcmDecoder {
             extractor.selectTrack(trackIndex)
             val format = extractor.getTrackFormat(trackIndex)
             val mime = format.getString(MediaFormat.KEY_MIME) ?: return null
-            val channelCount = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
-            val sourceSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE).coerceAtLeast(1)
 
             decoder = MediaCodec.createDecoderByType(mime)
             decoder.configure(format, null, null, 0)
             decoder.start()
 
-            val interleaved = decodeToInterleavedFloat(extractor, decoder, channelCount)
+            // Wartości startowe z formatu wejścia; nadpisywane przez INFO_OUTPUT_FORMAT_CHANGED.
+            val decoded =
+                decodeToInterleavedFloat(
+                    extractor = extractor,
+                    decoder = decoder,
+                    initialChannelCount = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1),
+                    initialSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE).coerceAtLeast(1),
+                )
             decoder.stop()
             decoder.release()
             extractor.release()
             decoder = null
             extractor = null
 
-            if (interleaved.isEmpty()) return null
+            if (decoded.samples.isEmpty()) return null
 
-            val mono = interleavedToMono(interleaved, channelCount)
-            resampleMono(mono, sourceSampleRate, targetSampleRate)
+            val mono = interleavedToMono(decoded.samples, decoded.channelCount)
+            resampleMono(mono, decoded.sampleRate, targetSampleRate)
         } catch (_: Exception) {
             null
         } finally {
@@ -249,38 +256,42 @@ private object BeatPcmDecoder {
         }
     }
 
+    private data class DecodedPcm(
+        val samples: FloatArray,
+        val channelCount: Int,
+        val sampleRate: Int,
+    )
+
     private fun decodeToInterleavedFloat(
         extractor: MediaExtractor,
         decoder: MediaCodec,
-        channelCount: Int,
-    ): FloatArray {
+        initialChannelCount: Int,
+        initialSampleRate: Int,
+    ): DecodedPcm {
         val bufferInfo = MediaCodec.BufferInfo()
         val chunks = mutableListOf<ByteArray>()
         var inputDone = false
         var outputDone = false
 
+        var channelCount = initialChannelCount
+        var sampleRate = initialSampleRate
+        // Domyślnie większość dekoderów Androida zwraca PCM 16-bit LE.
+        var pcmEncoding = AudioFormat.ENCODING_PCM_16BIT
+
         while (!outputDone) {
             val inputIndex = decoder.dequeueInputBuffer(10_000)
-            if (inputIndex >= 0) {
-                if (!inputDone) {
-                    val inputBuffer = decoder.getInputBuffer(inputIndex) ?: break
+            if (inputIndex >= 0 && !inputDone) {
+                val inputBuffer = decoder.getInputBuffer(inputIndex)
+                if (inputBuffer != null) {
                     val sampleSize = extractor.readSampleData(inputBuffer, 0)
                     if (sampleSize < 0) {
                         decoder.queueInputBuffer(
-                            inputIndex,
-                            0,
-                            0,
-                            0,
-                            MediaCodec.BUFFER_FLAG_END_OF_STREAM,
+                            inputIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM,
                         )
                         inputDone = true
                     } else {
                         decoder.queueInputBuffer(
-                            inputIndex,
-                            0,
-                            sampleSize,
-                            extractor.sampleTime,
-                            0,
+                            inputIndex, 0, sampleSize, extractor.sampleTime, 0,
                         )
                         extractor.advance()
                     }
@@ -288,40 +299,97 @@ private object BeatPcmDecoder {
             }
 
             val outputIndex = decoder.dequeueOutputBuffer(bufferInfo, 10_000)
-            if (outputIndex >= 0) {
-                if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
-                    outputDone = true
+            when {
+                outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                    val out = decoder.outputFormat
+                    if (out.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
+                        channelCount = out.getInteger(MediaFormat.KEY_CHANNEL_COUNT).coerceAtLeast(1)
+                    }
+                    if (out.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
+                        sampleRate = out.getInteger(MediaFormat.KEY_SAMPLE_RATE).coerceAtLeast(1)
+                    }
+                    if (out.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+                        pcmEncoding = out.getInteger(MediaFormat.KEY_PCM_ENCODING)
+                    }
                 }
-                val outputBuffer = decoder.getOutputBuffer(outputIndex) ?: run {
+
+                outputIndex >= 0 -> {
+                    if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
+                        outputDone = true
+                    }
+                    val outputBuffer = decoder.getOutputBuffer(outputIndex)
+                    if (outputBuffer != null && bufferInfo.size > 0) {
+                        val chunk = ByteArray(bufferInfo.size)
+                        outputBuffer.position(bufferInfo.offset)
+                        outputBuffer.get(chunk, 0, bufferInfo.size)
+                        chunks.add(chunk)
+                    }
                     decoder.releaseOutputBuffer(outputIndex, false)
-                    continue
                 }
-                val chunk = ByteArray(bufferInfo.size)
-                outputBuffer.get(chunk)
-                chunks.add(chunk)
-                decoder.releaseOutputBuffer(outputIndex, false)
             }
         }
 
-        var totalShortFrames = 0
-        for (chunk in chunks) {
-            totalShortFrames += chunk.size / (channelCount * 2)
-        }
-        val out = FloatArray(totalShortFrames * channelCount)
-        var offset = 0
-        val byteBuffer = ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN)
+        val samples = pcmBytesToFloat(chunks, pcmEncoding)
+        return DecodedPcm(samples, channelCount, sampleRate)
+    }
+
+    /** Konwersja surowych bajtów PCM (wg [pcmEncoding] z output formatu) na float -1..1. */
+    private fun pcmBytesToFloat(chunks: List<ByteArray>, pcmEncoding: Int): FloatArray {
+        val bytesPerSample =
+            when (pcmEncoding) {
+                AudioFormat.ENCODING_PCM_8BIT -> 1
+                AudioFormat.ENCODING_PCM_16BIT -> 2
+                AudioFormat.ENCODING_PCM_24BIT_PACKED -> 3
+                AudioFormat.ENCODING_PCM_FLOAT, AudioFormat.ENCODING_PCM_32BIT -> 4
+                else -> 2
+            }
+        var total = 0
+        for (chunk in chunks) total += chunk.size / bytesPerSample
+        val out = FloatArray(total)
+        var o = 0
         for (chunk in chunks) {
             var i = 0
-            while (i + 1 < chunk.size && offset < out.size) {
-                byteBuffer.clear()
-                byteBuffer.put(chunk[i])
-                byteBuffer.put(chunk[i + 1])
-                i += 2
-                byteBuffer.flip()
-                out[offset++] = byteBuffer.short / 32768f
+            val limit = chunk.size - bytesPerSample
+            while (i <= limit && o < out.size) {
+                out[o++] =
+                    when (pcmEncoding) {
+                        AudioFormat.ENCODING_PCM_8BIT -> {
+                            ((chunk[i].toInt() and 0xff) - 128) / 128f
+                        }
+                        AudioFormat.ENCODING_PCM_24BIT_PACKED -> {
+                            val b0 = chunk[i].toInt() and 0xff
+                            val b1 = chunk[i + 1].toInt() and 0xff
+                            val b2 = chunk[i + 2].toInt()
+                            val packed = b0 or (b1 shl 8) or (b2 shl 16)
+                            ((packed shl 8) shr 8) / 8_388_608f
+                        }
+                        AudioFormat.ENCODING_PCM_FLOAT -> {
+                            val bits =
+                                (chunk[i].toInt() and 0xff) or
+                                    ((chunk[i + 1].toInt() and 0xff) shl 8) or
+                                    ((chunk[i + 2].toInt() and 0xff) shl 16) or
+                                    ((chunk[i + 3].toInt() and 0xff) shl 24)
+                            Float.fromBits(bits).coerceIn(-1f, 1f)
+                        }
+                        AudioFormat.ENCODING_PCM_32BIT -> {
+                            val v =
+                                (chunk[i].toInt() and 0xff).toLong() or
+                                    ((chunk[i + 1].toInt() and 0xff).toLong() shl 8) or
+                                    ((chunk[i + 2].toInt() and 0xff).toLong() shl 16) or
+                                    ((chunk[i + 3].toInt() and 0xff).toLong() shl 24)
+                            val signed = v.toInt()
+                            signed / 2_147_483_648f
+                        }
+                        else -> {
+                            val lo = chunk[i].toInt() and 0xff
+                            val hi = chunk[i + 1].toInt()
+                            ((hi shl 8) or lo) / 32768f
+                        }
+                    }
+                i += bytesPerSample
             }
         }
-        return out.copyOf(offset)
+        return out.copyOf(o)
     }
 
     private fun interleavedToMono(interleaved: FloatArray, channelCount: Int): FloatArray {

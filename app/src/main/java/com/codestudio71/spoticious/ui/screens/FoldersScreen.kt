@@ -7,8 +7,8 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -57,7 +57,21 @@ import com.codestudio71.spoticious.folders.TrackSortOrder
 import com.codestudio71.spoticious.player.PlayerViewModel
 import com.codestudio71.spoticious.ui.components.MiamiFrame
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
+import com.codestudio71.spoticious.ui.theme.MiamiGradientColors
 import com.codestudio71.spoticious.ui.theme.MiamiPink
+
+/** Zaokrąglenie jak MiamiFrame (16dp), bez ramki — tylko delikatne podświetlenie wiersza. */
+private val FolderFileRowShape = RoundedCornerShape(12.dp)
+
+/** Rozjaśniony odcień z palety gradientu — subtelny, nie cyan block. */
+private val FolderFileSelectedBrush =
+    Brush.verticalGradient(
+        colors =
+            listOf(
+                MiamiGradientColors[1].copy(alpha = 0.72f),
+                MiamiGradientColors[2].copy(alpha = 0.58f),
+            ),
+    )
 
 @Composable
 fun FoldersScreen(
@@ -129,20 +143,7 @@ fun FoldersScreen(
     }
 
     Box(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .background(
-                    brush =
-                        Brush.verticalGradient(
-                            colors =
-                                listOf(
-                                    Color(0xFF0D0D1A),
-                                    Color(0xFF1A0A2E),
-                                    Color(0xFF2D1B4E),
-                                ),
-                        ),
-                ),
+        modifier = modifier.fillMaxSize(),
     ) {
         when {
             isLoading && folders.isEmpty() -> {
@@ -294,34 +295,40 @@ private fun FolderSection(
         if (isExpanded) {
             folder.files.forEach { file ->
                 val filePlaying = isFileSelected(file.uri)
-                MiamiFrame(
+                Row(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 4.dp)
-                            .clickable { onFileClick(file) },
-                    contentPadding = 12.dp,
-                    highlighted = filePlaying,
+                            .padding(horizontal = 10.dp, vertical = 3.dp)
+                            .clip(FolderFileRowShape)
+                            .then(
+                                if (filePlaying) {
+                                    Modifier.background(FolderFileSelectedBrush, FolderFileRowShape)
+                                } else {
+                                    Modifier
+                                },
+                            )
+                            .clickable { onFileClick(file) }
+                            .padding(vertical = 11.dp, horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MusicNote,
-                            contentDescription = null,
-                            tint = if (filePlaying) MiamiPink else MiamiPink.copy(alpha = 0.8f),
-                            modifier = Modifier.size(22.dp),
-                        )
-                        Spacer(modifier = Modifier.size(10.dp))
+                    Text(
+                        text = file.displayName,
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = if (filePlaying) FontWeight.SemiBold else FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (file.durationMs > 0L) {
                         Text(
-                            text = file.displayName,
-                            color = Color.White,
-                            fontSize = 14.sp,
-                            fontWeight = if (filePlaying) FontWeight.SemiBold else FontWeight.Normal,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
+                            text = formatFolderDuration(file.durationMs),
+                            color =
+                                if (filePlaying) Color.White.copy(alpha = 0.9f)
+                                else Color.White.copy(alpha = 0.65f),
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(start = 12.dp),
                         )
                     }
                 }
@@ -329,4 +336,12 @@ private fun FolderSection(
             Spacer(modifier = Modifier.height(8.dp))
         }
     }
+}
+
+private fun formatFolderDuration(ms: Long): String {
+    if (ms <= 0) return "0:00"
+    val totalSeconds = (ms / 1000).toInt()
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "%d:%02d".format(minutes, seconds)
 }

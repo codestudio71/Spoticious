@@ -59,6 +59,7 @@ import com.codestudio71.spoticious.player.PlayerViewModel
 import com.codestudio71.spoticious.player.RenderViewModel
 import com.codestudio71.spoticious.ui.components.MiniPlayer
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
+import com.codestudio71.spoticious.ui.theme.MiamiGradientColors
 import com.codestudio71.spoticious.ui.theme.MiamiPink
 
 enum class Tab(
@@ -70,13 +71,6 @@ enum class Tab(
     EQ(R.string.eq, Icons.Default.GraphicEq),
     RENDER(R.string.render, Icons.Default.Save)
 }
-
-private val MainScreenGradient =
-    listOf(
-        Color(0xFF0D0D1A),
-        Color(0xFF1A0A2E),
-        Color(0xFF2D1B4E),
-    )
 
 @Composable
 fun MainScreen(modifier: Modifier = Modifier) {
@@ -124,7 +118,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
         modifier =
             modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(MainScreenGradient)),
+                .background(Brush.verticalGradient(MiamiGradientColors)),
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -340,7 +334,7 @@ private fun MainTopBar(
             Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(start = 8.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -348,33 +342,39 @@ private fun MainTopBar(
             modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .then(
-                        if (!searchExpanded && searchActive) Modifier.clickable(onClick = onSearchClick)
-                        else Modifier
-                    )
-            ) {
-                androidx.compose.animation.AnimatedVisibility(visible = !searchExpanded && searchActive) {
+            if (searchActive) {
+                SortDotsButton(
+                    sortMode = sortMode,
+                    onSortModeChange = onSortModeChange,
+                    sortMenuExpanded = sortMenuExpanded,
+                    onSortMenuExpandedChange = onSortMenuExpandedChange,
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                androidx.compose.animation.AnimatedVisibility(visible = !searchExpanded) {
                     Text(
                         text = stringResource(R.string.search),
-                        color = Color(0xFF00E5FF),
+                        color = MiamiCyan,
                         fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.clickable(onClick = onSearchClick),
                     )
                 }
-                androidx.compose.animation.AnimatedVisibility(visible = searchExpanded && searchActive) {
+            }
+            androidx.compose.animation.AnimatedVisibility(
+                visible = searchExpanded && searchActive,
+                modifier = Modifier.weight(1f),
+            ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(end = 16.dp)
                             .background(
-                                Color(0xFF00E5FF).copy(alpha = 0.15f),
+                                MiamiCyan.copy(alpha = 0.15f),
                                 RoundedCornerShape(8.dp)
                             )
                             .border(
                                 width = 1.dp,
-                                color = Color(0xFF00E5FF).copy(alpha = 0.4f),
+                                color = MiamiCyan.copy(alpha = 0.4f),
                                 shape = RoundedCornerShape(8.dp)
                             )
                             .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -409,84 +409,85 @@ private fun MainTopBar(
                         }
                     }
                 }
-            }
-
-            if (searchActive) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Box {
-                    IconButton(
-                        onClick = { onSortMenuExpandedChange(true) },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(3.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(4.dp)
-                                    .background(Color(0xFF0066FF), CircleShape)
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(4.dp)
-                                    .background(Color(0xFF00AACC), CircleShape)
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(4.dp)
-                                    .background(Color(0xFF00E5FF), CircleShape)
-                            )
-                        }
-                    }
-                    DropdownMenu(
-                    expanded = sortMenuExpanded,
-                    onDismissRequest = { onSortMenuExpandedChange(false) },
-                    modifier = Modifier.background(Color(0xFF1A1F26))
-                ) {
-                    Text(
-                        text = stringResource(R.string.sort_by),
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                    TrackSortOrder.entries.forEach { order ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = when (order) {
-                                        TrackSortOrder.NAME_ASC -> stringResource(R.string.sort_title_asc)
-                                        TrackSortOrder.NAME_DESC -> stringResource(R.string.sort_title_desc)
-                                        TrackSortOrder.DURATION_ASC -> stringResource(R.string.sort_duration_asc)
-                                        TrackSortOrder.DURATION_DESC -> stringResource(R.string.sort_duration_desc)
-                                        TrackSortOrder.DATE_ADDED_ASC -> stringResource(R.string.sort_date_asc)
-                                        TrackSortOrder.DATE_ADDED_DESC -> stringResource(R.string.sort_date_desc)
-                                    },
-                                    color = if (sortMode == order) MiamiCyan else Color.White
-                                )
-                            },
-                            onClick = {
-                                onSortModeChange(order)
-                                onSortMenuExpandedChange(false)
-                            }
-                        )
-                    }
-                }
-                }
-            }
         }
 
-        Box(
-            modifier = Modifier
-                .clickable(onClick = onExtraClick)
-                .padding(horizontal = 4.dp, vertical = 2.dp)
+        Text(
+            text = stringResource(R.string.extra),
+            color = MiamiPink,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Medium,
+            modifier =
+                Modifier
+                    .clickable(onClick = onExtraClick)
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+        )
+    }
+}
+
+@Composable
+private fun SortDotsButton(
+    sortMode: TrackSortOrder,
+    onSortModeChange: (TrackSortOrder) -> Unit,
+    sortMenuExpanded: Boolean,
+    onSortMenuExpandedChange: (Boolean) -> Unit,
+) {
+    Box {
+        Column(
+            modifier =
+                Modifier
+                    .clickable { onSortMenuExpandedChange(true) }
+                    .padding(vertical = 8.dp, horizontal = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(4.dp)
+                    .background(Color(0xFF0066FF), CircleShape),
+            )
+            Box(
+                modifier = Modifier
+                    .size(4.dp)
+                    .background(Color(0xFF00AACC), CircleShape),
+            )
+            Box(
+                modifier = Modifier
+                    .size(4.dp)
+                    .background(Color(0xFF00E5FF), CircleShape),
+            )
+        }
+        DropdownMenu(
+            expanded = sortMenuExpanded,
+            onDismissRequest = { onSortMenuExpandedChange(false) },
+            modifier = Modifier.background(Color(0xFF1A1F26))
         ) {
             Text(
-                text = stringResource(R.string.extra),
-                color = MiamiPink,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
+                text = stringResource(R.string.sort_by),
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
+            TrackSortOrder.entries.forEach { order ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = when (order) {
+                                TrackSortOrder.NAME_ASC -> stringResource(R.string.sort_title_asc)
+                                TrackSortOrder.NAME_DESC -> stringResource(R.string.sort_title_desc)
+                                TrackSortOrder.DURATION_ASC -> stringResource(R.string.sort_duration_asc)
+                                TrackSortOrder.DURATION_DESC -> stringResource(R.string.sort_duration_desc)
+                                TrackSortOrder.DATE_ADDED_ASC -> stringResource(R.string.sort_date_asc)
+                                TrackSortOrder.DATE_ADDED_DESC -> stringResource(R.string.sort_date_desc)
+                            },
+                            color = if (sortMode == order) MiamiCyan else Color.White
+                        )
+                    },
+                    onClick = {
+                        onSortModeChange(order)
+                        onSortMenuExpandedChange(false)
+                    }
+                )
+            }
         }
     }
 }

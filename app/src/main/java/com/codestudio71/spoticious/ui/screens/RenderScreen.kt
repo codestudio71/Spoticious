@@ -1,6 +1,5 @@
 package com.codestudio71.spoticious.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,14 +61,6 @@ fun RenderScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF003344),
-                        Color(0xFF2D0050)
-                    )
-                )
-            )
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center

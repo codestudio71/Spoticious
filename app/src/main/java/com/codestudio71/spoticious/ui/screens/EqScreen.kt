@@ -53,7 +53,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.font.FontWeight
@@ -166,16 +165,7 @@ fun EqScreen(
     }
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF003344),
-                        Color(0xFF2D0050)
-                    )
-                )
-            )
+        modifier = modifier.fillMaxSize()
     ) {
         Column(
             modifier = Modifier

@@ -30,7 +30,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -41,6 +40,7 @@ import com.codestudio71.spoticious.R
 import com.codestudio71.spoticious.ui.components.MiamiFrame
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
 import com.codestudio71.spoticious.ui.theme.MiamiPink
+import com.codestudio71.spoticious.ui.theme.miamiVerticalGradient
 
 @Composable
 fun ExtraScreen(
@@ -55,15 +55,7 @@ fun ExtraScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF0D1117),
-                        Color(0xFF1A1F26),
-                        Color(0xFF151A22)
-                    )
-                )
-            )
+            .background(miamiVerticalGradient())
             .verticalScroll(rememberScrollState())
     ) {
         Row(

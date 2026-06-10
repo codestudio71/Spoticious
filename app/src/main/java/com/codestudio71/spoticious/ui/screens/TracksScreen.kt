@@ -13,6 +13,7 @@ import android.content.pm.PackageManager
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -60,10 +62,22 @@ import com.codestudio71.spoticious.folders.requestWriteAccessForRename
 import com.codestudio71.spoticious.folders.TrackMediaOpResult
 import com.codestudio71.spoticious.player.PlayerViewModel
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
+import com.codestudio71.spoticious.ui.theme.MiamiGradientColors
 import com.codestudio71.spoticious.ui.theme.MiamiPink
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+private val TrackRowShape = RoundedCornerShape(12.dp)
+
+private val TrackRowSelectedBrush =
+    Brush.verticalGradient(
+        colors =
+            listOf(
+                MiamiGradientColors[1].copy(alpha = 0.72f),
+                MiamiGradientColors[2].copy(alpha = 0.58f),
+            ),
+    )
 
 private sealed class PendingMediaAction {
     data class DeleteApi30(val uri: android.net.Uri) : PendingMediaAction()
@@ -399,16 +413,7 @@ fun TracksScreen(
     }
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF003344),
-                        Color(0xFF2D0050)
-                    )
-                )
-            )
+        modifier = modifier.fillMaxSize()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             if (isLoading && allFiles.isEmpty()) {
@@ -488,32 +493,41 @@ private fun TrackRow(
     onLongClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-            .background(
-                if (isSelected) MiamiCyan.copy(alpha = 0.2f)
-                else Color.Transparent
-            )
-            .padding(vertical = 14.dp, horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 3.dp)
+                .clip(TrackRowShape)
+                .then(
+                    if (isSelected) {
+                        Modifier.background(TrackRowSelectedBrush, TrackRowShape)
+                    } else {
+                        Modifier
+                    },
+                )
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                )
+                .padding(vertical = 11.dp, horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = file.displayName,
-            color = if (isSelected) MiamiCyan else MaterialTheme.colorScheme.onBackground,
+            color = Color.White,
             fontSize = 15.sp,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
         )
         Text(
             text = formatDuration(file.durationMs),
-            color = if (isSelected) MiamiCyan.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            color =
+                if (isSelected) Color.White.copy(alpha = 0.9f)
+                else Color.White.copy(alpha = 0.65f),
             fontSize = 13.sp,
-            modifier = Modifier.padding(start = 12.dp)
+            modifier = Modifier.padding(start = 12.dp),
         )
     }
 }

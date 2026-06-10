@@ -28,6 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
+import kotlin.math.log10
 
 enum class RecordMode {
     Freestyle,
@@ -147,6 +148,10 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _selectedBeatUri = MutableStateFlow<Uri?>(null)
     val selectedBeatUri: StateFlow<Uri?> = _selectedBeatUri.asStateFlow()
+
+    /** Głośność bitu (0..1) — wspólna dla podglądu i miksu freestyle. */
+    private val _beatGain = MutableStateFlow(FreestyleMixdown.BEAT_GAIN)
+    val beatGain: StateFlow<Float> = _beatGain.asStateFlow()
 
     val beatLabel: StateFlow<String?> =
         _selectedBeatUri
@@ -338,8 +343,19 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         _selectedBeatUri.value = uri
         beatPreviewPlayer.setPreferredOutputDevice(_selectedOutputDevice.value)
         beatPreviewPlayer.loadBeat(uri)
+        beatPreviewPlayer.setVolume(_beatGain.value)
         beatPreviewPlayer.seekToStart()
         beatPreviewPlayer.pause()
+    }
+
+    /** Ten sam gain słychać w podglądzie (ExoPlayer) i w mixie po STOP. */
+    fun setBeatGain(value: Float) {
+        val g = value.coerceIn(0f, 1f)
+        val old = _beatGain.value
+        if (old == g) return
+        _beatGain.value = g
+        beatPreviewPlayer.setVolume(g)
+        refreshBeatVisualizationForGain(old, g)
     }
 
     fun toggleBeatPreviewPlayback() {
@@ -425,18 +441,51 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun pushBeatFrame(frame: FrameResult) {
+    private fun pushBeatFrame(rawFrame: FrameResult) {
+        val frame = applyBeatGainToFrame(rawFrame, _beatGain.value)
         processBeatVuAndPeak(frame.dbfs)
         val nowMs = SystemClock.elapsedRealtime()
         synchronized(waveformBufferLock) {
-            beatWaveformBuffer.addLast(frame)
+            beatWaveformBuffer.addLast(rawFrame)
             while (beatWaveformBuffer.size > 200) {
                 beatWaveformBuffer.removeFirst()
             }
             if (lastBeatWaveListEmitMs < 0 || nowMs - lastBeatWaveListEmitMs >= WAVE_SNAPSHOT_INTERVAL_MS) {
-                _beatWaveform.value = beatWaveformBuffer.toList()
+                _beatWaveform.value = beatWaveformBuffer.map { applyBeatGainToFrame(it, _beatGain.value) }
                 lastBeatWaveListEmitMs = nowMs
             }
+        }
+    }
+
+    /** Visualizer widzi PCM przed ExoPlayer.volume — skalujemy jak gain na wyjściu. */
+    private fun applyBeatGainToFrame(frame: FrameResult, gain: Float): FrameResult {
+        val g = gain.coerceIn(0f, 1f)
+        if (g <= 0f) return waveformAnalyzer.silentFrame()
+        if (g == 1f) return frame
+        val dbOffset = (20f * log10(g.toDouble())).toFloat()
+        return FrameResult(
+            minAmplitude = (frame.minAmplitude * g).coerceIn(-1f, 0f),
+            maxAmplitude = (frame.maxAmplitude * g).coerceIn(0f, 1f),
+            rms = (frame.rms * g).coerceIn(0f, 1f),
+            dbfs = (frame.dbfs + dbOffset).coerceIn(-60f, 0f),
+        )
+    }
+
+    private fun refreshBeatVisualizationForGain(oldGain: Float, newGain: Float) {
+        val dbDelta =
+            if (oldGain > 0f && newGain > 0f) {
+                (20f * log10(newGain / oldGain)).toFloat()
+            } else if (newGain <= 0f) {
+                -60f - smoothedBeatDb
+            } else {
+                0f
+            }
+        smoothedBeatDb = (smoothedBeatDb + dbDelta).coerceIn(-60f, 0f)
+        beatPeakDisplayDb = (beatPeakDisplayDb + dbDelta).coerceIn(-60f, 0f)
+        _beatDbfs.value = smoothedBeatDb
+        _beatPeakDbfs.value = beatPeakDisplayDb
+        synchronized(waveformBufferLock) {
+            _beatWaveform.value = beatWaveformBuffer.map { applyBeatGainToFrame(it, newGain) }
         }
     }
 
@@ -532,6 +581,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
                     withContext(Dispatchers.Main) {
                         beatPreviewPlayer.setPreferredOutputDevice(_selectedOutputDevice.value)
                         beatPreviewPlayer.loadBeat(beatUri)
+                        beatPreviewPlayer.setVolume(_beatGain.value)
                         beatPreviewPlayer.seekToStart()
                         beatPreviewPlayer.play()
                     }
@@ -577,6 +627,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
                                 vocalWav = vocalFile,
                                 beatUri = beatUri,
                                 targetSampleRate = SAMPLE_RATE_DEFAULT,
+                                beatGain = _beatGain.value,
                             )
                         }
                     if (!mixed) {

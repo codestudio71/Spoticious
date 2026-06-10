@@ -15,8 +15,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
@@ -35,6 +37,8 @@ fun MiamiFrame(
     modifier: Modifier = Modifier,
     contentPadding: Dp = 16.dp,
     highlighted: Boolean = false,
+    /** Gdy false — bez szarego wypełnienia; gradient ekranu widać w środku ramki. */
+    solidFill: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val borderWidth = if (highlighted) 2.dp else 1.dp
@@ -52,8 +56,8 @@ fun MiamiFrame(
             MiamiFrameFill
         }
 
-    Column(
-        modifier =
+    val frameModifier =
+        if (solidFill) {
             modifier
                 .shadow(
                     elevation = elevation,
@@ -72,9 +76,32 @@ fun MiamiFrame(
                         },
                 )
                 .clip(MiamiFrameShape)
-                .border(width = borderWidth, color = borderColor, shape = MiamiFrameShape)
                 .background(fill, MiamiFrameShape)
-                .padding(contentPadding),
+                .border(width = borderWidth, color = borderColor, shape = MiamiFrameShape)
+        } else {
+            // Tylko obrys — bez cienia i bez wypełnienia; gradient MainScreen prześwieca 1:1.
+            modifier
+                .clip(MiamiFrameShape)
+                .drawBehind {
+                    val corner = MiamiFrameShape.topStart.toPx(size, this)
+                    val stroke = borderWidth.toPx()
+                    val inset = stroke / 2f
+                    drawRoundRect(
+                        color = borderColor,
+                        topLeft = Offset(inset, inset),
+                        size =
+                            androidx.compose.ui.geometry.Size(
+                                width = size.width - stroke,
+                                height = size.height - stroke,
+                            ),
+                        cornerRadius = CornerRadius((corner - inset).coerceAtLeast(0f)),
+                        style = Stroke(width = stroke),
+                    )
+                }
+        }
+
+    Column(
+        modifier = frameModifier.padding(contentPadding),
         content = content,
     )
 }
