@@ -1,9 +1,16 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.codestudio71.spoticious.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -139,28 +146,37 @@ fun ExtraScreen(
             ExtraButton(
                 icon = Icons.Default.Payment,
                 text = stringResource(R.string.support_project),
+                copyText = "https://www.paypal.com/donate/?hosted_button_id=H9DVM6NZ8TD6A",
                 onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.paypal.com/donate/?hosted_button_id=H9DVM6NZ8TD6A"))
+                    val intent =
+                        Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://www.paypal.com/donate/?hosted_button_id=H9DVM6NZ8TD6A"),
+                        )
                     context.startActivity(intent)
-                }
+                },
             )
             ExtraButton(
                 icon = Icons.Default.Email,
                 text = stringResource(R.string.contact),
+                copyText = "codestudio71@pm.me",
                 onClick = {
-                    val intent = Intent(Intent.ACTION_SENDTO).apply {
-                        data = Uri.parse("mailto:codestudio71@pm.me")
-                    }
+                    val intent =
+                        Intent(Intent.ACTION_SENDTO).apply {
+                            data = Uri.parse("mailto:codestudio71@pm.me")
+                        }
                     context.startActivity(intent)
-                }
+                },
             )
             ExtraButton(
                 icon = Icons.Default.Code,
                 text = stringResource(R.string.github),
+                copyText = "https://github.com/codestudio71",
                 onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/codestudio71"))
+                    val intent =
+                        Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/codestudio71"))
                     context.startActivity(intent)
-                }
+                },
             )
         }
         Spacer(modifier = Modifier.height(32.dp))
@@ -215,13 +231,28 @@ private fun ExtraCard(
 private fun ExtraButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     text: String,
-    onClick: () -> Unit
+    copyText: String,
+    onClick: () -> Unit,
 ) {
+    val context = LocalContext.current
     MiamiFrame(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick),
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = {
+                        val clipboard =
+                            context.getSystemService(ClipboardManager::class.java)
+                        clipboard.setPrimaryClip(ClipData.newPlainText("link", copyText))
+                        Toast
+                            .makeText(
+                                context,
+                                context.getString(R.string.link_copied),
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                    },
+                ),
         contentPadding = 16.dp,
     ) {
         Row(

@@ -505,6 +505,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private fun stopPositionUpdates() {
         positionJob?.cancel()
         positionJob = null
+        persistListenSessionProgress()
         _selectedUri.value?.toString()?.let { uri ->
             playbackRepo.savePlaybackState(uri, player.currentPosition, _fileName.value ?: defaultTrackName())
         }
@@ -604,12 +605,23 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
         val totalListenedMs = listenSessionAccumulatedMs.coerceAtLeast(0L)
         listenSessionPlayEventId = null
+        updateQualifiedListenDuration(rowId, totalListenedMs)
+    }
+
+    /** Zapisuje faktyczny czas słuchania (pauza / zmiana utworu / koniec sesji). */
+    private fun persistListenSessionProgress() {
+        val rowId = listenSessionPlayEventId ?: return
+        if (!listenQualifiedRecorded) return
+        updateQualifiedListenDuration(rowId, listenSessionAccumulatedMs.coerceAtLeast(0L))
+    }
+
+    private fun updateQualifiedListenDuration(rowId: Long, listenedMs: Long) {
         val app = getApplication<Application>()
         val scope =
             (SpoticiousApplication.instance ?: app as? SpoticiousApplication)?.masterDataScope
                 ?: return
         scope.launch {
-            SpoticiousDatabase.get(app).playEventDao().updateListenedMs(rowId, totalListenedMs)
+            SpoticiousDatabase.get(app).playEventDao().updateListenedMs(rowId, listenedMs)
         }
     }
 

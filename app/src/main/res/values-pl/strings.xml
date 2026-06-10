@@ -35,7 +35,10 @@
     <string name="wrapped_total_plays">Odtworzenia</string>
     <string name="wrapped_top_tracks">Top 10 utworów</string>
     <string name="wrapped_top_artists">Top 10 artystów</string>
+    <string name="wrapped_top_tracks_time">Top 10 utworów — czas</string>
+    <string name="wrapped_top_artists_time">Top 10 artystów — czas</string>
     <string name="wrapped_play_count">%d odtw.</string>
+    <string name="wrapped_listen_time">%1$s słuchania</string>
     <string name="wrapped_unknown_artist">Nieznany</string>
     <string name="wrapped_empty">Słuchaj muzyki, statystyki pojawią się tutaj.</string>
     <string name="record_preview">Record Preview</string>
@@ -72,6 +75,7 @@
     <string name="support_project">Wesprzyj projekt</string>
     <string name="contact">Kontakt</string>
     <string name="github">GitHub</string>
+    <string name="link_copied">Link skopiowany</string>
     <string name="app_version_label">wersja %1$s</string>
 
     <!-- PlaylistScreen -->

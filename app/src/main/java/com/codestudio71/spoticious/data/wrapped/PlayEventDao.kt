@@ -14,6 +14,16 @@ data class ArtistPlayCount(
     val playCount: Int,
 )
 
+data class TitleListenTime(
+    val title: String,
+    val listenedMs: Long,
+)
+
+data class ArtistListenTime(
+    val artist: String?,
+    val listenedMs: Long,
+)
+
 @Dao
 interface PlayEventDao {
 
@@ -62,4 +72,28 @@ interface PlayEventDao {
         """,
     )
     suspend fun totalListenedTimeMs(sinceMs: Long): Long
+
+    @Query(
+        """
+        SELECT title AS title, COALESCE(SUM(listenedMs), 0) AS listenedMs
+        FROM play_events
+        WHERE playedAtMs >= :sinceMs AND qualified = 1
+        GROUP BY title
+        ORDER BY listenedMs DESC
+        LIMIT 10
+        """,
+    )
+    suspend fun topTracksByTime(sinceMs: Long): List<TitleListenTime>
+
+    @Query(
+        """
+        SELECT artist AS artist, COALESCE(SUM(listenedMs), 0) AS listenedMs
+        FROM play_events
+        WHERE playedAtMs >= :sinceMs AND qualified = 1
+        GROUP BY artist
+        ORDER BY listenedMs DESC
+        LIMIT 10
+        """,
+    )
+    suspend fun topArtistsByTime(sinceMs: Long): List<ArtistListenTime>
 }

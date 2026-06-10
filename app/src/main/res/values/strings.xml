@@ -35,7 +35,10 @@
     <string name="wrapped_total_plays">Plays</string>
     <string name="wrapped_top_tracks">Top 10 tracks</string>
     <string name="wrapped_top_artists">Top 10 artists</string>
+    <string name="wrapped_top_tracks_time">Top 10 tracks by time</string>
+    <string name="wrapped_top_artists_time">Top 10 artists by time</string>
     <string name="wrapped_play_count">%d plays</string>
+    <string name="wrapped_listen_time">%1$s listened</string>
     <string name="wrapped_unknown_artist">Unknown</string>
     <string name="wrapped_empty">Listen to music — your stats will show up here.</string>
     <string name="record_preview">Record Preview</string>
@@ -72,6 +75,7 @@
     <string name="support_project">Support project</string>
     <string name="contact">Contact</string>
     <string name="github">GitHub</string>
+    <string name="link_copied">Link copied</string>
     <string name="app_version_label">version %1$s</string>
 
     <!-- PlaylistScreen -->

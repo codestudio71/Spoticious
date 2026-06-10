@@ -1,6 +1,5 @@
 package com.codestudio71.spoticious.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,7 +31,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -43,15 +41,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.codestudio71.spoticious.R
 import com.codestudio71.spoticious.data.wrapped.WrappedPeriod
 import com.codestudio71.spoticious.ui.components.MiamiFrame
+import com.codestudio71.spoticious.ui.theme.MiamiCyan
 import com.codestudio71.spoticious.ui.wrapped.WrappedViewModel
-
-private val WrappedBg =
-    listOf(
-        Color(0xFF0D0D1A),
-        Color(0xFF1A0A2E),
-        Color(0xFF2D1B4E),
-    )
-private val CyanUi = Color(0xFF00BCD4)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WrappedScreen(
@@ -62,6 +53,8 @@ fun WrappedScreen(
     val period by viewModel.period.collectAsState()
     val topTracks by viewModel.topTracks.collectAsState()
     val topArtists by viewModel.topArtists.collectAsState()
+    val topTracksByTime by viewModel.topTracksByTime.collectAsState()
+    val topArtistsByTime by viewModel.topArtistsByTime.collectAsState()
     val totalPlays by viewModel.totalPlays.collectAsState()
     val totalTimeMs by viewModel.totalTimeMs.collectAsState()
     val loading by viewModel.loading.collectAsState()
@@ -76,7 +69,6 @@ fun WrappedScreen(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(WrappedBg))
                 .statusBarsPadding()
                 .navigationBarsPadding(),
     ) {
@@ -156,7 +148,7 @@ fun WrappedScreen(
                             .height(200.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator(color = CyanUi)
+                    CircularProgressIndicator(color = MiamiCyan)
                 }
             } else if (isEmpty) {
                 Text(
@@ -184,40 +176,54 @@ fun WrappedScreen(
 
                 Spacer(Modifier.height(24.dp))
 
-                Text(
-                    stringResource(R.string.wrapped_top_tracks),
-                    color = CyanUi,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
+                WrappedRankingSection(
+                    title = stringResource(R.string.wrapped_top_tracks),
+                    rows =
+                        topTracks.map { row ->
+                            row.title to stringResource(R.string.wrapped_play_count, row.playCount)
+                        },
                 )
-                Spacer(Modifier.height(12.dp))
-                topTracks.forEachIndexed { index, row ->
-                    RankedRow(
-                        rank = index + 1,
-                        primary = row.title,
-                        secondary = stringResource(R.string.wrapped_play_count, row.playCount),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
 
                 Spacer(Modifier.height(20.dp))
 
-                Text(
-                    stringResource(R.string.wrapped_top_artists),
-                    color = CyanUi,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
+                WrappedRankingSection(
+                    title = stringResource(R.string.wrapped_top_tracks_time),
+                    rows =
+                        topTracksByTime.map { row ->
+                            row.title to
+                                stringResource(
+                                    R.string.wrapped_listen_time,
+                                    formatWrappedDuration(row.listenedMs),
+                                )
+                        },
                 )
-                Spacer(Modifier.height(12.dp))
-                topArtists.forEachIndexed { index, row ->
-                    RankedRow(
-                        rank = index + 1,
-                        primary = row.artist?.takeIf { it.isNotBlank() }
-                            ?: stringResource(R.string.wrapped_unknown_artist),
-                        secondary = stringResource(R.string.wrapped_play_count, row.playCount),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
+
+                Spacer(Modifier.height(20.dp))
+
+                WrappedRankingSection(
+                    title = stringResource(R.string.wrapped_top_artists),
+                    rows =
+                        topArtists.map { row ->
+                            (row.artist?.takeIf { it.isNotBlank() }
+                                ?: stringResource(R.string.wrapped_unknown_artist)) to
+                                stringResource(R.string.wrapped_play_count, row.playCount)
+                        },
+                )
+
+                Spacer(Modifier.height(20.dp))
+
+                WrappedRankingSection(
+                    title = stringResource(R.string.wrapped_top_artists_time),
+                    rows =
+                        topArtistsByTime.map { row ->
+                            (row.artist?.takeIf { it.isNotBlank() }
+                                ?: stringResource(R.string.wrapped_unknown_artist)) to
+                                stringResource(
+                                    R.string.wrapped_listen_time,
+                                    formatWrappedDuration(row.listenedMs),
+                                )
+                        },
+                )
             }
 
             Spacer(Modifier.height(24.dp))
@@ -248,7 +254,7 @@ private fun WrappedPeriodChip(
             FilterChipDefaults.filterChipColors(
                 containerColor = Color.Transparent,
                 labelColor = Color.White,
-                selectedContainerColor = CyanUi,
+                selectedContainerColor = MiamiCyan,
                 selectedLabelColor = Color(0xFF0D0D1A),
             ),
         border =
@@ -277,6 +283,29 @@ private fun StatCard(
 }
 
 @Composable
+private fun WrappedRankingSection(
+    title: String,
+    rows: List<Pair<String, String>>,
+) {
+    if (rows.isEmpty()) return
+    Text(
+        title,
+        color = MiamiCyan,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.Bold,
+    )
+    Spacer(Modifier.height(12.dp))
+    rows.forEachIndexed { index, (primary, secondary) ->
+        RankedRow(
+            rank = index + 1,
+            primary = primary,
+            secondary = secondary,
+        )
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
 private fun RankedRow(
     rank: Int,
     primary: String,
@@ -292,7 +321,7 @@ private fun RankedRow(
         ) {
             Text(
                 "$rank.",
-                color = CyanUi,
+                color = MiamiCyan,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(end = 12.dp),
