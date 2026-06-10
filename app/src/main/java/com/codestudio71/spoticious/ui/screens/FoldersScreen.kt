@@ -2,6 +2,7 @@ package com.codestudio71.spoticious.ui.screens
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -42,6 +44,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,6 +55,7 @@ import com.codestudio71.spoticious.folders.FolderWithFiles
 import com.codestudio71.spoticious.folders.FoldersViewModel
 import com.codestudio71.spoticious.folders.TrackSortOrder
 import com.codestudio71.spoticious.player.PlayerViewModel
+import com.codestudio71.spoticious.ui.components.MiamiFrame
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
 import com.codestudio71.spoticious.ui.theme.MiamiPink
 
@@ -125,16 +129,20 @@ fun FoldersScreen(
     }
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF003344),
-                        Color(0xFF2D0050)
-                    )
-                )
-            )
+        modifier =
+            modifier
+                .fillMaxSize()
+                .background(
+                    brush =
+                        Brush.verticalGradient(
+                            colors =
+                                listOf(
+                                    Color(0xFF0D0D1A),
+                                    Color(0xFF1A0A2E),
+                                    Color(0xFF2D1B4E),
+                                ),
+                        ),
+                ),
     ) {
         when {
             isLoading && folders.isEmpty() -> {
@@ -191,22 +199,28 @@ fun FoldersScreen(
                 var expandedFolders by remember { mutableStateOf(setOf<String>()) }
 
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(filteredFolders) { folder ->
+                    items(filteredFolders, key = { it.folderPath }) { folder ->
                         val isExpanded = folder.folderPath in expandedFolders
+                        val folderHighlighted =
+                            folder.files.any { playerViewModel.isCurrentTrackUri(it.uri) }
                         FolderSection(
                             folder = folder,
                             isExpanded = isExpanded,
+                            highlighted = folderHighlighted,
                             onToggle = {
-                                expandedFolders = if (isExpanded) {
-                                    expandedFolders - folder.folderPath
-                                } else {
-                                    expandedFolders + folder.folderPath
-                                }
+                                expandedFolders =
+                                    if (isExpanded) {
+                                        expandedFolders - folder.folderPath
+                                    } else {
+                                        expandedFolders + folder.folderPath
+                                    }
                             },
                             onFileClick = { file ->
                                 if (!playerViewModel.isCurrentTrackUri(file.uri)) {
@@ -217,10 +231,11 @@ fun FoldersScreen(
                                         file.uri,
                                         file.displayName,
                                         playlist,
-                                        index.coerceAtLeast(0)
+                                        index.coerceAtLeast(0),
                                     )
                                 }
-                            }
+                            },
+                            isFileSelected = { uri -> playerViewModel.isCurrentTrackUri(uri) },
                         )
                     }
                 }
@@ -233,13 +248,15 @@ fun FoldersScreen(
 private fun FolderSection(
     folder: FolderWithFiles,
     isExpanded: Boolean,
+    highlighted: Boolean,
     onToggle: () -> Unit,
-    onFileClick: (AudioFile) -> Unit
+    onFileClick: (AudioFile) -> Unit,
+    isFileSelected: (Uri) -> Boolean,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFF1A1F26), RoundedCornerShape(16.dp))
+    MiamiFrame(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = 0.dp,
+        highlighted = highlighted,
     ) {
         Row(
             modifier = Modifier
@@ -276,30 +293,40 @@ private fun FolderSection(
 
         if (isExpanded) {
             folder.files.forEach { file ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onFileClick(file) }
-                        .padding(start = 16.dp, end = 16.dp, bottom = 12.dp, top = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                val filePlaying = isFileSelected(file.uri)
+                MiamiFrame(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                            .clickable { onFileClick(file) },
+                    contentPadding = 12.dp,
+                    highlighted = filePlaying,
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.MusicNote,
-                        contentDescription = null,
-                        tint = MiamiPink.copy(alpha = 0.8f),
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.size(12.dp))
-                    Text(
-                        text = file.displayName,
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MusicNote,
+                            contentDescription = null,
+                            tint = if (filePlaying) MiamiPink else MiamiPink.copy(alpha = 0.8f),
+                            modifier = Modifier.size(22.dp),
+                        )
+                        Spacer(modifier = Modifier.size(10.dp))
+                        Text(
+                            text = file.displayName,
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = if (filePlaying) FontWeight.SemiBold else FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }

@@ -360,11 +360,20 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         _selectedDeviceId.value = deviceId
     }
 
+    /**
+     * Radź słuchawki, gdy beat gra przez wbudowany głośnik (wycieka do mikrofonu).
+     * Liczy się OUTPUT bitu, nie typ mikrofonu. Tylko freestyle z wczytanym bitem.
+     */
     fun shouldAdviceHeadphonesForFreestyle(): Boolean {
         if (_mode.value != RecordMode.Freestyle) return false
-        val curId = _selectedDeviceId.value ?: return false
-        val dev = deviceRepo.devices.value.firstOrNull { it.info.id == curId } ?: return false
-        return dev.info.type == AudioDeviceInfo.TYPE_BUILTIN_MIC
+        if (_selectedBeatUri.value == null) return false
+        val outType =
+            _selectedOutputDevice.value?.type
+                ?: BeatOutputDeviceRepository
+                    .defaultOutputDevice(outputDeviceRepo.devices.value)
+                    ?.type
+                ?: AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+        return outType == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
     }
 
     /** Mono: jedno wejście z listy whitelist (patrz RecordingDeviceRepository). */

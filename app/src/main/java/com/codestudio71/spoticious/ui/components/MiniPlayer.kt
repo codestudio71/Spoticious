@@ -1,6 +1,5 @@
 package com.codestudio71.spoticious.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +24,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
@@ -52,20 +50,13 @@ fun MiniPlayer(
     val hasTrack = selectedUri != null
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable {
-                if (hasTrack) onTapWhenPlaying() else onTapWhenEmpty()
-            }
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF1A1F26),
-                        Color(0xFF151A22)
-                    )
-                )
-            )
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clickable {
+                    if (hasTrack) onTapWhenPlaying() else onTapWhenEmpty()
+                }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         Column {
             Row(

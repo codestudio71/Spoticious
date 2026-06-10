@@ -1,6 +1,8 @@
 package com.codestudio71.spoticious
 
 import android.content.Intent
+import android.graphics.Color as AndroidColor
+import android.os.Build
 import android.os.Bundle
 import com.codestudio71.spoticious.player.PendingExternalAudio
 import com.codestudio71.spoticious.player.PlaybackService
@@ -32,6 +34,11 @@ class MainActivity : ComponentActivity() {
         PendingExternalAudio.enqueueFromIntentIfViewAction(intent)
         PlaybackService.ensureStarted(this)
         enableEdgeToEdge()
+        @Suppress("DEPRECATION")
+        window.navigationBarColor = AndroidColor.parseColor("#0D0D1A")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
         setContent {
             SpoticiousTheme {
                 val resumeWithPlayer = PlaybackService.player?.currentMediaItem != null

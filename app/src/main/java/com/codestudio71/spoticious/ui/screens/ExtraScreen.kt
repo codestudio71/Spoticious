@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.codestudio71.spoticious.R
+import com.codestudio71.spoticious.ui.components.MiamiFrame
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
 import com.codestudio71.spoticious.ui.theme.MiamiPink
 
@@ -181,35 +182,39 @@ private fun ExtraCard(
     subtitle: String,
     onClick: (() -> Unit)? = null
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (onClick != null) Modifier.clickable(onClick = onClick)
-                else Modifier
-            )
-            .background(Color(0xFF1A1F26), RoundedCornerShape(12.dp))
-            .padding(20.dp),
-        verticalAlignment = Alignment.CenterVertically
+    MiamiFrame(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .then(
+                    if (onClick != null) Modifier.clickable(onClick = onClick)
+                    else Modifier
+                ),
+        contentPadding = 20.dp,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MiamiPink,
-            modifier = Modifier.padding(end = 16.dp)
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MiamiPink,
+                modifier = Modifier.padding(end = 16.dp),
             )
-            Text(
-                text = subtitle,
-                color = Color.White.copy(alpha = 0.6f),
-                fontSize = 13.sp
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    text = subtitle,
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 13.sp,
+                )
+            }
         }
     }
 }
@@ -220,30 +225,29 @@ private fun ExtraButton(
     text: String,
     onClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                Brush.horizontalGradient(
-                    colors = listOf(MiamiCyan.copy(alpha = 0.3f), MiamiPink.copy(alpha = 0.3f))
-                ),
-                RoundedCornerShape(8.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+    MiamiFrame(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick),
+        contentPadding = 16.dp,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MiamiCyan,
-            modifier = Modifier.padding(end = 12.dp)
-        )
-        Text(
-            text = text,
-            color = MiamiCyan,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MiamiCyan,
+                modifier = Modifier.padding(end = 12.dp),
+            )
+            Text(
+                text = text,
+                color = MiamiCyan,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
     }
 }

@@ -82,6 +82,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import com.codestudio71.spoticious.ui.components.MiamiFrame
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
 import com.codestudio71.spoticious.ui.theme.MiamiPink
 import com.google.android.exoplayer2.Player
@@ -358,13 +359,9 @@ fun FullPlayerScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Color(0xFF1A1F26),
-                        RoundedCornerShape(12.dp)
-                    )
+            MiamiFrame(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = 0.dp,
             ) {
                 Column(
                     modifier = Modifier
@@ -409,13 +406,9 @@ fun FullPlayerScreen(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Color(0xFF1A1F26),
-                        RoundedCornerShape(12.dp)
-                    )
+            MiamiFrame(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = 0.dp,
             ) {
                 Column(
                     modifier = Modifier

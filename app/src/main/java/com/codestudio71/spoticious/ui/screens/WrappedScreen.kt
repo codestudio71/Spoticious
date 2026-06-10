@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.codestudio71.spoticious.R
 import com.codestudio71.spoticious.data.wrapped.WrappedPeriod
+import com.codestudio71.spoticious.ui.components.MiamiFrame
 import com.codestudio71.spoticious.ui.wrapped.WrappedViewModel
 
 private val WrappedBg =
@@ -51,8 +52,6 @@ private val WrappedBg =
         Color(0xFF2D1B4E),
     )
 private val CyanUi = Color(0xFF00BCD4)
-private val CardBg = Color(0xFF1A1F26)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WrappedScreen(
@@ -270,12 +269,7 @@ private fun StatCard(
     value: String,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier =
-            modifier
-                .background(CardBg, RoundedCornerShape(12.dp))
-                .padding(16.dp),
-    ) {
+    MiamiFrame(modifier = modifier) {
         Text(title, color = Color.White.copy(alpha = 0.65f), fontSize = 13.sp)
         Spacer(Modifier.height(8.dp))
         Text(value, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
@@ -288,30 +282,31 @@ private fun RankedRow(
     primary: String,
     secondary: String,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(CardBg, RoundedCornerShape(10.dp))
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    MiamiFrame(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = 12.dp,
     ) {
-        Text(
-            "$rank.",
-            color = CyanUi,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(end = 12.dp),
-        )
-        Column(modifier = Modifier.weight(1f)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                primary,
-                color = Color.White,
+                "$rank.",
+                color = CyanUi,
                 fontSize = 15.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(end = 12.dp),
             )
-            Text(secondary, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    primary,
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(secondary, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+            }
         }
     }
 }

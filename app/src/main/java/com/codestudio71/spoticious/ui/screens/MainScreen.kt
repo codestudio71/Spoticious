@@ -43,12 +43,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -74,6 +70,13 @@ enum class Tab(
     EQ(R.string.eq, Icons.Default.GraphicEq),
     RENDER(R.string.render, Icons.Default.Save)
 }
+
+private val MainScreenGradient =
+    listOf(
+        Color(0xFF0D0D1A),
+        Color(0xFF1A0A2E),
+        Color(0xFF2D1B4E),
+    )
 
 @Composable
 fun MainScreen(modifier: Modifier = Modifier) {
@@ -117,10 +120,15 @@ fun MainScreen(modifier: Modifier = Modifier) {
         searchQuery = ""
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(MainScreenGradient)),
+    ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = MaterialTheme.colorScheme.background,
+            containerColor = Color.Transparent,
             topBar = {
                 if (!(showExtraScreen && showRecordPreview)) {
                     MainTopBar(
@@ -159,25 +167,19 @@ fun MainScreen(modifier: Modifier = Modifier) {
                             onTapWhenPlaying = openFullPlayer,
                         )
                         NavigationBar(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
+                            containerColor = Color.Transparent,
+                            contentColor = Color.White,
                         ) {
                             Tab.entries.forEach { tab ->
                                 val isSelected = selectedTab == tab
                                 val selectedColor =
                                     when (tab) {
-                                        Tab.UTWORY -> Color(0xFF00E5FF)
-                                        Tab.FOLDERY -> Color(0xFFFFFFFF)
-                                        Tab.EQ -> Color(0xFFFFFFFF)
-                                        Tab.RENDER -> Color(0xFFFF4DB8)
+                                        Tab.UTWORY -> MiamiCyan
+                                        Tab.FOLDERY -> Color.White
+                                        Tab.EQ -> Color.White
+                                        Tab.RENDER -> MiamiPink
                                     }
-                                val unselectedColor =
-                                    when (tab) {
-                                        Tab.UTWORY -> Color(0x4D00E5FF)
-                                        Tab.FOLDERY -> Color(0xFF666666)
-                                        Tab.EQ -> Color(0xFF666666)
-                                        Tab.RENDER -> Color(0x4DFF4DB8)
-                                    }
+                                val unselectedColor = selectedColor.copy(alpha = 0.4f)
                                 NavigationBarItem(
                                     selected = isSelected,
                                     onClick = {
@@ -217,7 +219,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                                     },
                                     colors =
                                         NavigationBarItemDefaults.colors(
-                                            indicatorColor = MaterialTheme.colorScheme.surface,
+                                            indicatorColor = Color.Transparent,
                                             selectedIconColor = selectedColor,
                                             selectedTextColor = selectedColor,
                                             unselectedIconColor = unselectedColor,
@@ -231,10 +233,10 @@ fun MainScreen(modifier: Modifier = Modifier) {
             },
         ) { innerPadding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(MaterialTheme.colorScheme.background)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
         ) {
             if (showExtraScreen) {
                 when {
@@ -334,11 +336,11 @@ private fun MainTopBar(
     val searchActive = selectedTab == Tab.UTWORY || selectedTab == Tab.FOLDERY
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -477,27 +479,11 @@ private fun MainTopBar(
         Box(
             modifier = Modifier
                 .clickable(onClick = onExtraClick)
-                .border(
-                    width = 1.5.dp,
-                    color = Color(0xFFFF4DB8),
-                    shape = RoundedCornerShape(4.dp)
-                )
-                .drawBehind {
-                    val glowColor = Color(0xFFFF4DB8)
-                    val cornerRadius = 4.dp.toPx()
-                    drawRoundRect(
-                        color = glowColor.copy(alpha = 180 / 255f),
-                        topLeft = Offset.Zero,
-                        size = Size(size.width, size.height),
-                        cornerRadius = CornerRadius(cornerRadius),
-                        style = Stroke(width = 6.dp.toPx())
-                    )
-                }
                 .padding(horizontal = 4.dp, vertical = 2.dp)
         ) {
             Text(
                 text = stringResource(R.string.extra),
-                color = Color(0xFFFF4DB8),
+                color = MiamiPink,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
