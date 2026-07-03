@@ -512,6 +512,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         return urisSameAudioTrack(cur, uri)
     }
 
+    /** W Compose przekaż [current] z collectAsState — inaczej LazyColumn może nie odświeżyć highlightu. */
+    fun isSelectedTrack(uri: Uri, current: Uri?): Boolean {
+        if (current == null) return false
+        return urisSameAudioTrack(current, uri)
+    }
+
     /** Ten sam plik w MediaStore mimo różnych reprezentacji URI (np. EXTERNAL vs VOLUME_EXTERNAL). */
     private fun urisSameAudioTrack(a: Uri, b: Uri): Boolean {
         if (a == b) return true

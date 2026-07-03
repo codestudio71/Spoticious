@@ -62,6 +62,7 @@ import com.codestudio71.spoticious.folders.TrackMediaOpResult
 import com.codestudio71.spoticious.player.PlayerViewModel
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
 import com.codestudio71.spoticious.ui.theme.MiamiGradientColors
+import com.codestudio71.spoticious.ui.theme.MiamiDialogFill
 import com.codestudio71.spoticious.ui.theme.MiamiPink
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -339,7 +340,7 @@ fun TracksScreen(
                     Text(stringResource(R.string.cancel), color = Color.White.copy(alpha = 0.85f))
                 }
             },
-            containerColor = Color(0xFF1A1F26)
+            containerColor = MiamiDialogFill
         )
     }
 
@@ -365,7 +366,7 @@ fun TracksScreen(
                     Text(stringResource(R.string.cancel), color = Color.White.copy(alpha = 0.85f))
                 }
             },
-            containerColor = Color(0xFF1A1F26)
+            containerColor = MiamiDialogFill
         )
     }
 
@@ -407,7 +408,7 @@ fun TracksScreen(
                     Text(stringResource(R.string.cancel), color = MiamiPink)
                 }
             },
-            containerColor = Color(0xFF1A1F26)
+            containerColor = MiamiDialogFill
         )
     }
 
@@ -436,7 +437,7 @@ fun TracksScreen(
                         val index = filteredFiles.indexOf(file)
                         TrackRow(
                             file = file,
-                            isSelected = playerViewModel.isCurrentTrackUri(file.uri),
+                            isSelected = playerViewModel.isSelectedTrack(file.uri, selectedUri),
                             onClick = {
                                 if (!playerViewModel.isCurrentTrackUri(file.uri)) {
                                     val playlist = filteredFiles.map { f -> f.uri to f.displayName }

@@ -97,6 +97,10 @@
     <string name="audio_cut_segment_default">Fragment %1$d</string>
     <string name="audio_cut_export">Eksportuj</string>
     <string name="audio_cut_export_failed">Eksport nie powiódł się</string>
+    <string name="audio_cut_merge_segments">Połącz fragmenty</string>
+    <string name="audio_cut_merge_default">Połączony fragment</string>
+    <string name="audio_cut_merge_hint">Zaznacz 2+ fragmenty, potem połącz w jeden WAV.</string>
+    <string name="audio_cut_merging">Łączenie…</string>
     <string name="audio_cut_waveform">Waveform</string>
     <string name="audio_cut_edit_unit_title">Ustaw %1$s</string>
     <string name="audio_cut_unit_hours">godziny</string>
@@ -110,6 +114,12 @@
     <string name="save">Zapisz</string>
     <string name="cancel">Anuluj</string>
     <string name="select_track">Wybierz utwór</string>
+    <string name="select_folder">Wybierz folder</string>
+    <string name="playlist_add_mode_tracks">Utwory</string>
+    <string name="playlist_add_mode_folders">Foldery</string>
+    <string name="playlist_folder_tracks_count">%1$s (%2$d)</string>
+    <string name="playlist_added_tracks_from_folder">Dodano %1$d utwór(ów) z folderu %2$s</string>
+    <string name="playlist_all_tracks_already_in_list">Wszystkie utwory z tego folderu są już na playliście</string>
     <string name="playlist_empty_hint">Lista jest pusta. Kliknij + aby dodać utwory.</string>
     <string name="your_playlists">Twoje Playlisty</string>
     <string name="no_playlists">Brak utworzonych playlist</string>

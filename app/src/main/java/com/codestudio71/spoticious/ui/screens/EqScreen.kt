@@ -3,6 +3,7 @@ package com.codestudio71.spoticious.ui.screens
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -52,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.CircleShape
@@ -66,8 +68,14 @@ import com.codestudio71.spoticious.player.PlayerViewModel
 import com.codestudio71.spoticious.ui.theme.EqBackground
 import com.codestudio71.spoticious.ui.theme.EqMiamiCyan
 import com.codestudio71.spoticious.ui.theme.EqMiamiPink
+import com.codestudio71.spoticious.ui.theme.MiamiDialogFill
+import com.codestudio71.spoticious.ui.theme.MiamiMenuShape
+import com.codestudio71.spoticious.ui.theme.MiamiCyan
 import kotlin.OptIn
 import kotlinx.coroutines.launch
+
+/** Presety nad suwakami EQ — prawie pełne tło, żeby suwaki nie przeświecały. */
+private val EqPresetsMenuFill = Color(0xFF1A0A2E)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -117,7 +125,7 @@ fun EqScreen(
                     Text(stringResource(R.string.cancel), color = EqMiamiCyan)
                 }
             },
-            containerColor = Color(0xFF1A1F26)
+            containerColor = MiamiDialogFill
         )
     }
 
@@ -160,7 +168,7 @@ fun EqScreen(
                     Text(stringResource(R.string.cancel), color = Color.Gray)
                 }
             },
-            containerColor = Color(0xFF1A1F26)
+            containerColor = MiamiDialogFill
         )
     }
 
@@ -189,7 +197,7 @@ fun EqScreen(
                         border = BorderStroke(1.dp, EqMiamiCyan),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = EqMiamiCyan,
-                            containerColor = Color(0xFF152028)
+                            containerColor = Color.Transparent,
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                     ) {
@@ -208,10 +216,16 @@ fun EqScreen(
                     DropdownMenu(
                         expanded = presetsMenuExpanded,
                         onDismissRequest = { presetsMenuExpanded = false },
-                        modifier = Modifier
-                            .widthIn(min = 280.dp)
-                            .heightIn(max = 480.dp),
-                        containerColor = Color(0xFF1A1F26)
+                        modifier =
+                            Modifier
+                                .widthIn(min = 280.dp)
+                                .heightIn(max = 480.dp)
+                                .clip(MiamiMenuShape)
+                                .background(EqPresetsMenuFill, MiamiMenuShape)
+                                .border(1.dp, MiamiCyan.copy(alpha = 0.85f), MiamiMenuShape),
+                        containerColor = Color.Transparent,
+                        tonalElevation = 0.dp,
+                        shadowElevation = 8.dp,
                     ) {
                             Column(
                                 modifier = Modifier

@@ -59,12 +59,19 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
     private val _exportingId = MutableStateFlow<Long?>(null)
     val exportingId: StateFlow<Long?> = _exportingId.asStateFlow()
 
+    private val _selectedSegmentIds = MutableStateFlow<Set<Long>>(emptySet())
+    val selectedSegmentIds: StateFlow<Set<Long>> = _selectedSegmentIds.asStateFlow()
+
+    private val _merging = MutableStateFlow(false)
+    val merging: StateFlow<Boolean> = _merging.asStateFlow()
+
     private var nextSegmentId = 1L
 
     fun loadFile(context: Context, uri: Uri, displayName: String) {
         viewModelScope.launch {
             _uiState.value = CutUiState.Loading(0f)
             _segments.value = emptyList()
+            _selectedSegmentIds.value = emptySet()
             nextSegmentId = 1L
             try {
                 context.contentResolver.takePersistableUriPermission(
@@ -155,6 +162,68 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
             ?.exportCacheFile
             ?.let { runCatching { it.delete() } }
         _segments.value = _segments.value.filter { it.id != id }
+        _selectedSegmentIds.value = _selectedSegmentIds.value - id
+    }
+
+    fun toggleSegmentSelected(id: Long) {
+        val current = _selectedSegmentIds.value
+        _selectedSegmentIds.value =
+            if (id in current) {
+                current - id
+            } else {
+                current + id
+            }
+    }
+
+    fun exportMerged(
+        context: Context,
+        label: String,
+        onSaved: (String) -> Unit,
+        onError: () -> Unit,
+    ) {
+        val state = _uiState.value as? CutUiState.Ready ?: return
+        val ids = _selectedSegmentIds.value
+        if (ids.size < 2 || _merging.value || _exportingId.value != null) return
+
+        val windows =
+            _segments.value
+                .filter { it.id in ids }
+                .map { it.startMs to it.endMs }
+        if (windows.size < 2) return
+
+        viewModelScope.launch {
+            _merging.value = true
+            val outFile = cutter.buildOutputFile(context.filesDir, label)
+            val ok =
+                cutter.exportMergedSegments(
+                    context = context,
+                    sourceUri = state.sourceUri,
+                    windows = windows,
+                    outFile = outFile,
+                    sampleRate = state.peaks.sampleRate,
+                    channelCount = state.peaks.channelCount,
+                )
+            _merging.value = false
+            if (!ok) {
+                runCatching { outFile.delete() }
+                onError()
+                return@launch
+            }
+            val displayName = WavMusicExporter.sanitizeFileName(label)
+            val savedUri =
+                WavMusicExporter.saveToMusic(
+                    context.contentResolver,
+                    outFile,
+                    displayName,
+                )
+            if (savedUri == null) {
+                runCatching { outFile.delete() }
+                onError()
+                return@launch
+            }
+            _selectedSegmentIds.value = emptySet()
+            onSaved(displayName)
+        }
     }
 
     fun export(

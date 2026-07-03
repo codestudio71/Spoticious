@@ -84,6 +84,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import com.codestudio71.spoticious.ui.components.MiamiFrame
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
+import com.codestudio71.spoticious.ui.theme.MiamiDialogFill
+import com.codestudio71.spoticious.ui.theme.MiamiPanelFill
 import com.codestudio71.spoticious.ui.theme.MiamiPink
 import com.google.android.exoplayer2.Player
 
@@ -133,7 +135,7 @@ fun FullPlayerScreen(
     if (glossaryDialog) {
         AlertDialog(
             onDismissRequest = { glossaryDialog = false },
-            containerColor = Color(0xFF1A1F26),
+            containerColor = MiamiDialogFill,
             title = {
                 Text(
                     text = stringResource(R.string.master_data_title),
@@ -486,7 +488,7 @@ fun FullPlayerScreen(
                                     }
                                 },
                                 colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color(0xFF1A1F26),
+                                    checkedThumbColor = MiamiPanelFill,
                                     checkedTrackColor = MiamiCyan,
                                     uncheckedThumbColor = Color.Gray,
                                     uncheckedTrackColor = Color.DarkGray
@@ -684,10 +686,12 @@ private fun MasterDataTable(md: com.codestudio71.spoticious.player.MasterData) {
         lraColor(md.lra)
     )
 
+    MiamiFrame(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = 0.dp,
+    ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFF1A1F26))
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
@@ -710,7 +714,7 @@ private fun MasterDataTable(md: com.codestudio71.spoticious.player.MasterData) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp)
-                .background(Color(0xFF2A2F36))
+                .background(MiamiCyan.copy(alpha = 0.25f))
         )
         Row(
             modifier = Modifier
@@ -739,6 +743,7 @@ private fun MasterDataTable(md: com.codestudio71.spoticious.player.MasterData) {
                     .padding(horizontal = 8.dp, vertical = 6.dp),
             )
         }
+    }
     }
 }
 

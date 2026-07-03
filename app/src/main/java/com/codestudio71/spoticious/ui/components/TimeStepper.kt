@@ -50,13 +50,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.codestudio71.spoticious.R
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
+import com.codestudio71.spoticious.ui.theme.MiamiDialogFill
 import com.codestudio71.spoticious.ui.theme.MiamiPink
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.max
 
-private val TimeDialogBackground = Color(0xFF1A1F26)
+private val TimeDialogBackground = MiamiDialogFill
 private val TimeDialogGray = Color(0xFFB0B0B0)
 
 private val StepperButtonSize = 30.dp

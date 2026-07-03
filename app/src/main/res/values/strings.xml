@@ -97,6 +97,10 @@
     <string name="audio_cut_segment_default">Clip %1$d</string>
     <string name="audio_cut_export">Export</string>
     <string name="audio_cut_export_failed">Export failed</string>
+    <string name="audio_cut_merge_segments">Merge selected</string>
+    <string name="audio_cut_merge_default">Merged clip</string>
+    <string name="audio_cut_merge_hint">Select 2+ segments, then merge into one WAV.</string>
+    <string name="audio_cut_merging">Merging…</string>
     <string name="audio_cut_waveform">Waveform</string>
     <string name="audio_cut_edit_unit_title">Set %1$s</string>
     <string name="audio_cut_unit_hours">hours</string>
@@ -110,6 +114,12 @@
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
     <string name="select_track">Select track</string>
+    <string name="select_folder">Select folder</string>
+    <string name="playlist_add_mode_tracks">Tracks</string>
+    <string name="playlist_add_mode_folders">Folders</string>
+    <string name="playlist_folder_tracks_count">%1$s (%2$d)</string>
+    <string name="playlist_added_tracks_from_folder">Added %1$d track(s) from %2$s</string>
+    <string name="playlist_all_tracks_already_in_list">All tracks from this folder are already on the playlist</string>
     <string name="playlist_empty_hint">List is empty. Tap + to add tracks.</string>
     <string name="your_playlists">Your Playlists</string>
     <string name="no_playlists">No playlists created</string>

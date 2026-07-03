@@ -9,7 +9,7 @@ class AudioPeaks {
     suspend fun extract(
         context: Context,
         uri: Uri,
-        bucketCount: Int = 3000,
+        bucketCount: Int = 900,
         onProgress: (Float) -> Unit = {},
     ): WaveformPeaks? =
         withContext(Dispatchers.IO) {

@@ -33,7 +33,10 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlaylistPlay
-import androidx.compose.material.icons.filled.QueueMusic
+import android.widget.Toast
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -64,8 +67,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.codestudio71.spoticious.R
 import com.codestudio71.spoticious.player.PlayerViewModel
+import com.codestudio71.spoticious.ui.components.MiamiFrame
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
+import com.codestudio71.spoticious.ui.theme.MiamiDialogFill
 import com.codestudio71.spoticious.ui.theme.MiamiPink
+import com.codestudio71.spoticious.ui.theme.miamiMenuSurface
+import com.codestudio71.spoticious.ui.theme.miamiVerticalGradient
 import org.json.JSONArray
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -144,6 +151,79 @@ fun getAllAudioFiles(context: Context): List<Pair<String, String>> {
     return list
 }
 
+private data class AudioFolderGroup(
+    val folderName: String,
+    val folderPath: String,
+    val tracks: List<Pair<String, String>>,
+)
+
+private enum class PlaylistAddMode {
+    Tracks,
+    Folders,
+}
+
+/** Foldery z MediaStore — po kliknięciu dodajemy wszystkie utwory z folderu do playlisty. */
+private fun getAudioFolderGroups(context: Context): List<AudioFolderGroup> {
+    val collection =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+        } else {
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        }
+    val projection =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            arrayOf(
+                MediaStore.Audio.Media._ID,
+                MediaStore.Audio.Media.DISPLAY_NAME,
+                MediaStore.Audio.Media.RELATIVE_PATH,
+            )
+        } else {
+            arrayOf(
+                MediaStore.Audio.Media._ID,
+                MediaStore.Audio.Media.DISPLAY_NAME,
+                MediaStore.Audio.Media.DATA,
+            )
+        }
+    val filesByFolder = linkedMapOf<String, MutableList<Pair<String, String>>>()
+    context.contentResolver.query(
+        collection,
+        projection,
+        "${MediaStore.Audio.Media.IS_MUSIC} != 0",
+        null,
+        "${MediaStore.Audio.Media.DISPLAY_NAME} ASC",
+    )?.use { cursor ->
+        val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+        val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
+        val pathCol =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.RELATIVE_PATH)
+            } else {
+                cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            }
+        while (cursor.moveToNext()) {
+            val id = cursor.getLong(idCol)
+            val name = cursor.getString(nameCol) ?: context.getString(R.string.track_default)
+            val path = cursor.getString(pathCol).orEmpty()
+            val folderPath =
+                if (path.isNotEmpty()) {
+                    path.substringBeforeLast('/').ifEmpty { path }
+                } else {
+                    "Other"
+                }
+            val uri = android.content.ContentUris.withAppendedId(collection, id)
+            filesByFolder.getOrPut(folderPath) { mutableListOf() }.add(uri.toString() to name)
+        }
+    }
+    return filesByFolder.map { (path, tracks) ->
+        val folderName = path.substringAfterLast('/').ifEmpty { path }.ifEmpty { "Other" }
+        AudioFolderGroup(
+            folderName = folderName,
+            folderPath = path,
+            tracks = tracks,
+        )
+    }.sortedBy { it.folderName.lowercase() }
+}
+
 // --- 3. GŁÓWNY EKRAN UI ---
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -200,7 +280,7 @@ fun PlaylistScreen(
             dismissButton = {
                 TextButton(onClick = { showAddDialog = false }) { Text(stringResource(R.string.cancel), color = MiamiPink) }
             },
-            containerColor = Color(0xFF1A1F26)
+            containerColor = MiamiDialogFill
         )
     }
 
@@ -244,7 +324,7 @@ fun PlaylistScreen(
                     Text(stringResource(R.string.cancel), color = Color.White.copy(alpha = 0.85f))
                 }
             },
-            containerColor = Color(0xFF1A1F26)
+            containerColor = MiamiDialogFill
         )
     }
 
@@ -284,7 +364,7 @@ fun PlaylistScreen(
                     Text(stringResource(R.string.cancel), color = MiamiPink)
                 }
             },
-            containerColor = Color(0xFF1A1F26)
+            containerColor = MiamiDialogFill
         )
     }
 
@@ -310,52 +390,185 @@ fun PlaylistScreen(
                     Text(stringResource(R.string.cancel), color = Color.White.copy(alpha = 0.85f))
                 }
             },
-            containerColor = Color(0xFF1A1F26)
+            containerColor = MiamiDialogFill
         )
     }
 
-    // --- SELECTOR UTWORÓW ---
+    // --- SELECTOR UTWORÓW / FOLDERÓW ---
     if (showTrackSelector && selectedPlaylist != null) {
         val allTracks = remember { getAllAudioFiles(context) }
+        val folderGroups = remember { getAudioFolderGroups(context) }
+        var addMode by remember { mutableStateOf(PlaylistAddMode.Tracks) }
+
+        fun mergeTracksIntoPlaylist(incoming: List<Pair<String, String>>): Int {
+            val current = selectedPlaylist ?: return 0
+            val merged = current.tracks.toMutableList()
+            var added = 0
+            for (track in incoming) {
+                if (merged.none { it.first == track.first }) {
+                    merged.add(track)
+                    added++
+                }
+            }
+            if (added > 0) {
+                val updated = current.copy(tracks = merged)
+                val newList = playlists.map { if (it.id == updated.id) updated else it }
+                saveAndRefresh(newList)
+                selectedPlaylist = updated
+            }
+            return added
+        }
+
         AlertDialog(
             onDismissRequest = { showTrackSelector = false },
-            title = { Text(stringResource(R.string.select_track), color = Color.White) },
+            title = {
+                Text(
+                    text =
+                        if (addMode == PlaylistAddMode.Tracks) {
+                            stringResource(R.string.select_track)
+                        } else {
+                            stringResource(R.string.select_folder)
+                        },
+                    color = Color.White,
+                )
+            },
             text = {
-                LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
-                    items(allTracks.size) { i ->
-                        val track = allTracks[i]
-                        Text(
-                            text = track.second,
-                            color = Color.White,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    val currentTracks = selectedPlaylist!!.tracks.toMutableList()
-                                    if (!currentTracks.any { it.first == track.first }) {
-                                        currentTracks.add(track)
-                                        val updatedPlaylist = selectedPlaylist!!.copy(tracks = currentTracks)
-                                        val newList = playlists.map { if (it.id == updatedPlaylist.id) updatedPlaylist else it }
-                                        saveAndRefresh(newList)
-                                        selectedPlaylist = updatedPlaylist
-                                    }
-                                    showTrackSelector = false
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(
+                            modifier =
+                                Modifier
+                                    .clickable { addMode = PlaylistAddMode.Tracks }
+                                    .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = addMode == PlaylistAddMode.Tracks,
+                                onClick = { addMode = PlaylistAddMode.Tracks },
+                                colors =
+                                    RadioButtonDefaults.colors(
+                                        selectedColor = MiamiCyan,
+                                        unselectedColor = Color.White.copy(alpha = 0.5f),
+                                    ),
+                            )
+                            Text(
+                                stringResource(R.string.playlist_add_mode_tracks),
+                                color = Color.White,
+                                fontSize = 14.sp,
+                            )
+                        }
+                        Row(
+                            modifier =
+                                Modifier
+                                    .clickable { addMode = PlaylistAddMode.Folders }
+                                    .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = addMode == PlaylistAddMode.Folders,
+                                onClick = { addMode = PlaylistAddMode.Folders },
+                                colors =
+                                    RadioButtonDefaults.colors(
+                                        selectedColor = MiamiCyan,
+                                        unselectedColor = Color.White.copy(alpha = 0.5f),
+                                    ),
+                            )
+                            Text(
+                                stringResource(R.string.playlist_add_mode_folders),
+                                color = Color.White,
+                                fontSize = 14.sp,
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
+                        if (addMode == PlaylistAddMode.Tracks) {
+                            items(allTracks.size) { i ->
+                                val track = allTracks[i]
+                                Text(
+                                    text = track.second,
+                                    color = Color.White,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                mergeTracksIntoPlaylist(listOf(track))
+                                                showTrackSelector = false
+                                            }
+                                            .padding(16.dp),
+                                )
+                            }
+                        } else {
+                            items(folderGroups, key = { it.folderPath }) { folder ->
+                                Row(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                val added = mergeTracksIntoPlaylist(folder.tracks)
+                                                if (added > 0) {
+                                                    Toast.makeText(
+                                                        context,
+                                                        context.getString(
+                                                            R.string.playlist_added_tracks_from_folder,
+                                                            added,
+                                                            folder.folderName,
+                                                        ),
+                                                        Toast.LENGTH_SHORT,
+                                                    ).show()
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        context.getString(
+                                                            R.string.playlist_all_tracks_already_in_list,
+                                                        ),
+                                                        Toast.LENGTH_SHORT,
+                                                    ).show()
+                                                }
+                                            }
+                                            .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        Icons.Default.Folder,
+                                        contentDescription = null,
+                                        tint = MiamiCyan,
+                                        modifier = Modifier.size(22.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text =
+                                            stringResource(
+                                                R.string.playlist_folder_tracks_count,
+                                                folder.folderName,
+                                                folder.tracks.size,
+                                            ),
+                                        color = Color.White,
+                                        fontSize = 15.sp,
+                                    )
                                 }
-                                .padding(16.dp)
-                        )
+                            }
+                        }
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showTrackSelector = false }) { Text(stringResource(R.string.close), color = Color(0xFFFF007F)) }
+                TextButton(onClick = { showTrackSelector = false }) {
+                    Text(stringResource(R.string.close), color = MiamiPink)
+                }
             },
-            containerColor = Color(0xFF1A1F26)
+            containerColor = MiamiDialogFill,
         )
         return
     }
 
     // --- GŁÓWNE TŁO ---
     Column(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().background(miamiVerticalGradient()),
     ) {
 
         // --- 3A. WIDOK SZCZEGÓŁÓW PLAYLISTY ---
@@ -480,7 +693,10 @@ fun PlaylistScreen(
                                         DropdownMenu(
                                             expanded = trackMenuExpanded,
                                             onDismissRequest = { trackMenuExpanded = false },
-                                            containerColor = Color(0xFF1A1F26)
+                                            modifier = Modifier.miamiMenuSurface(),
+                                            containerColor = Color.Transparent,
+                                            tonalElevation = 0.dp,
+                                            shadowElevation = 8.dp,
                                         ) {
                                             DropdownMenuItem(
                                                 text = { Text(stringResource(R.string.remove_from_playlist), color = MiamiPink) },
@@ -515,7 +731,7 @@ fun PlaylistScreen(
                     modifier = Modifier.fillMaxSize().padding(24.dp),
                     verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(Icons.Default.QueueMusic, null, tint = Color.Gray, modifier = Modifier.size(64.dp))
+                    Icon(Icons.Default.PlaylistPlay, null, tint = Color.Gray, modifier = Modifier.size(64.dp))
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(stringResource(R.string.no_playlists), color = Color.White, fontSize = 18.sp)
                     Spacer(modifier = Modifier.height(24.dp))
@@ -526,23 +742,34 @@ fun PlaylistScreen(
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                     items(playlists, key = { it.id }) { playlist ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp)
-                                .background(Color(0xFF1A1F26), RoundedCornerShape(8.dp))
-                                .combinedClickable(
-                                    onClick = { selectedPlaylist = playlist },
-                                    onLongClick = { playlistRowMenuTarget = playlist }
-                                )
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        MiamiFrame(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                            contentPadding = 0.dp,
                         ) {
-                            Icon(Icons.Default.MusicNote, null, tint = MiamiCyan)
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Column {
-                                Text(playlist.name, color = Color.White, fontSize = 18.sp)
-                                Text(stringResource(R.string.tracks_count, playlist.tracks.size), color = Color.Gray, fontSize = 12.sp)
+                            Row(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .combinedClickable(
+                                            onClick = { selectedPlaylist = playlist },
+                                            onLongClick = { playlistRowMenuTarget = playlist },
+                                        )
+                                        .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Default.MusicNote, null, tint = MiamiCyan)
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column {
+                                    Text(playlist.name, color = Color.White, fontSize = 18.sp)
+                                    Text(
+                                        stringResource(R.string.tracks_count, playlist.tracks.size),
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        fontSize = 12.sp,
+                                    )
+                                }
                             }
                         }
                     }

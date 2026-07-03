@@ -41,10 +41,12 @@ import com.codestudio71.spoticious.player.OutputFormat
 import com.codestudio71.spoticious.player.RenderState
 import com.codestudio71.spoticious.player.RenderViewModel
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
+import com.codestudio71.spoticious.ui.theme.MiamiDialogFill
+import com.codestudio71.spoticious.ui.theme.MiamiPanelFill
 import com.codestudio71.spoticious.ui.theme.MiamiPink
 
-private val DialogBackground = Color(0xFF1A1A2E)
-private val DialogSurface = Color(0xFF16213E)
+private val DialogBackground = MiamiDialogFill
+private val DialogSurface = MiamiPanelFill
 private val GrayText = Color(0xFFB0B0B0)
 
 @Composable

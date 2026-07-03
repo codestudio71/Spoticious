@@ -24,7 +24,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.math.log10
 
@@ -527,13 +526,6 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         _beatPeakDbfs.value = beatPeakDisplayDb
     }
 
-    private suspend fun attachBeatVisualizerWhenRecording() {
-        repeat(42) {
-            beatPreviewPlayer.attachVisualizer(beatVisualizerListener)
-            if (beatPreviewPlayer.isVisualizerAttached()) return
-            delay(48)
-        }
-    }
 
     fun confirmStartRecording() {
         viewModelScope.launch {
@@ -555,11 +547,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
 
-            if (mode.value == RecordMode.Freestyle && selectedBeatUri.value != null) {
-                attachBeatVisualizerWhenRecording()
-            } else {
-                beatPreviewPlayer.releaseVisualizer()
-            }
+            beatPreviewPlayer.releaseVisualizer()
         }
     }
 

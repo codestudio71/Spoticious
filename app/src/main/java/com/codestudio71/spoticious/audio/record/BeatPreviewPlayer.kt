@@ -30,6 +30,7 @@ class BeatPreviewPlayer(context: Context) {
     private var progressJob: Job? = null
     private var visualizer: Visualizer? = null
     private var preferredOutputDevice: AudioDeviceInfo? = null
+    private var loadedBeatUri: Uri? = null
 
     private val player: ExoPlayer =
         ExoPlayer.Builder(appContext).build().apply {
@@ -105,7 +106,7 @@ class BeatPreviewPlayer(context: Context) {
                     captureSize = span[1]
                     setDataCaptureListener(
                         listener,
-                        Visualizer.getMaxCaptureRate(),
+                        Visualizer.getMaxCaptureRate() / 2,
                         true,
                         false,
                     )
@@ -168,7 +169,15 @@ class BeatPreviewPlayer(context: Context) {
         }
     }
 
+    fun isLoaded(uri: Uri): Boolean =
+        loadedBeatUri == uri && player.mediaItemCount > 0
+
     fun loadBeat(uri: Uri) {
+        if (isLoaded(uri) && player.playbackState != Player.STATE_IDLE) {
+            applyPreferredOutputDevice()
+            return
+        }
+        loadedBeatUri = uri
         player.setMediaItem(MediaItem.fromUri(uri))
         player.prepare()
         applyPreferredOutputDevice()
@@ -210,6 +219,7 @@ class BeatPreviewPlayer(context: Context) {
     /** Czyści źródło (np. po usunięciu bitu z listy). */
     fun clear() {
         releaseVisualizer()
+        loadedBeatUri = null
         stopProgressUpdates()
         try {
             player.stop()

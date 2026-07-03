@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -77,6 +79,8 @@ fun AudioCutScreen(
     val toMs by viewModel.toMs.collectAsState()
     val segments by viewModel.segments.collectAsState()
     val exportingId by viewModel.exportingId.collectAsState()
+    val selectedSegmentIds by viewModel.selectedSegmentIds.collectAsState()
+    val merging by viewModel.merging.collectAsState()
 
     val filePicker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -224,6 +228,54 @@ fun AudioCutScreen(
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                     )
+                    if (segments.size >= 2) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            stringResource(R.string.audio_cut_merge_hint),
+                            color = Color.White.copy(alpha = 0.55f),
+                            fontSize = 12.sp,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.exportMerged(
+                                    context = context,
+                                    label = context.getString(R.string.audio_cut_merge_default),
+                                    onSaved = { name ->
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                context.getString(R.string.record_saved_named, name),
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                    },
+                                    onError = {
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                context.getString(R.string.audio_cut_export_failed),
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                    },
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = selectedSegmentIds.size >= 2 && !merging && exportingId == null,
+                        ) {
+                            if (merging) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = MiamiCyan,
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Text(
+                                    stringResource(R.string.audio_cut_merge_segments),
+                                    color = MiamiCyan,
+                                )
+                            }
+                        }
+                    }
                     Spacer(Modifier.height(12.dp))
 
                     segments.forEach { segment ->
@@ -236,6 +288,9 @@ fun AudioCutScreen(
                                 formatStepperTimeHms((segment.endMs - segment.startMs).coerceAtLeast(0L)),
                             isExporting = exportingId == segment.id,
                             exportCacheFile = segment.exportCacheFile,
+                            selectedForMerge = segment.id in selectedSegmentIds,
+                            showMergeCheckbox = segments.size >= 2,
+                            onToggleMergeSelect = { viewModel.toggleSegmentSelected(segment.id) },
                             onRename = { viewModel.renameSegment(segment.id, it) },
                             onExport = {
                                 viewModel.export(
@@ -280,6 +335,9 @@ private fun SegmentRow(
     durationLabel: String,
     isExporting: Boolean,
     exportCacheFile: java.io.File?,
+    selectedForMerge: Boolean,
+    showMergeCheckbox: Boolean,
+    onToggleMergeSelect: () -> Unit,
     onRename: (String) -> Unit,
     onExport: () -> Unit,
     onShare: (java.io.File) -> Unit,
@@ -288,6 +346,30 @@ private fun SegmentRow(
     var editName by remember(segmentId, label) { mutableStateOf(label) }
 
     MiamiFrame(modifier = Modifier.fillMaxWidth(), contentPadding = 12.dp) {
+        if (showMergeCheckbox) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Checkbox(
+                    checked = selectedForMerge,
+                    onCheckedChange = { onToggleMergeSelect() },
+                    colors =
+                        CheckboxDefaults.colors(
+                            checkedColor = MiamiCyan,
+                            uncheckedColor = Color.White.copy(alpha = 0.5f),
+                            checkmarkColor = DarkOnCyan,
+                        ),
+                )
+                Text(
+                    label,
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
         OutlinedTextField(
             value = editName,
             onValueChange = {

@@ -14,7 +14,7 @@ import kotlin.math.roundToInt
 object FreestyleMixdown {
 
     const val VOCAL_GAIN = 0.9f
-    const val BEAT_GAIN = 0.7f
+    const val BEAT_GAIN = 0.55f
 
     private const val WAV_HEADER_SIZE = 44
     private const val CHUNK_PCM_BYTES = 1_048_576

@@ -1,16 +1,13 @@
 package com.codestudio71.spoticious.audio.record
 
 import android.content.Context
-import android.media.AudioAttributes
 import android.media.AudioDeviceInfo
-import android.media.AudioFocusRequest
-import android.media.AudioManager
 import android.net.Uri
-import android.os.Build
 import android.os.SystemClock
 import android.widget.Toast
 import com.codestudio71.spoticious.R
 import com.codestudio71.spoticious.SpoticiousApplication
+import com.codestudio71.spoticious.player.PlaybackService
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -69,7 +66,8 @@ object RecordingSession {
     @Volatile
     private var beatStartOffsetMs = 0L
 
-    private var recordingAudioFocusRequest: AudioFocusRequest? = null
+    /** Główny player był w trakcie odtwarzania — wznów po STOP nagrania. */
+    private var resumeMainPlaybackAfterRecording = false
 
     init {
         scope.launch {
@@ -157,14 +155,17 @@ object RecordingSession {
             return false
         }
 
-        requestRecordingAudioFocus()
+        pauseMainPlaybackForRecording()
 
         beatStartOffsetMs = 0L
         if (freestyleWithBeat) {
             val beatUri = _selectedBeatUri.value
             if (beatUri != null) {
+                beatPreviewPlayer.releaseVisualizer()
                 beatPreviewPlayer.setPreferredOutputDevice(beatOutputDevice)
-                beatPreviewPlayer.loadBeat(beatUri)
+                if (!beatPreviewPlayer.isLoaded(beatUri)) {
+                    beatPreviewPlayer.loadBeat(beatUri)
+                }
                 beatPreviewPlayer.setVolume(_beatGain.value)
                 beatPreviewPlayer.seekToStart()
                 beatPreviewPlayer.play()
@@ -195,8 +196,6 @@ object RecordingSession {
      */
     fun stopRecording() {
         scope.launch {
-            releaseRecordingAudioFocus()
-
             val needsMix =
                 _mode.value == RecordMode.Freestyle && _selectedBeatUri.value != null
             val beatUri = _selectedBeatUri.value
@@ -234,6 +233,7 @@ object RecordingSession {
                 }
             } finally {
                 _mixInProgress.value = false
+                resumeMainPlaybackIfNeeded()
             }
         }
     }
@@ -248,39 +248,19 @@ object RecordingSession {
         }
     }
 
-    private fun requestRecordingAudioFocus() {
-        val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val request =
-                AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                    .setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_MEDIA)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                            .build(),
-                    )
-                    .setOnAudioFocusChangeListener { }
-                    .build()
-            recordingAudioFocusRequest = request
-            audioManager.requestAudioFocus(request)
+    private fun pauseMainPlaybackForRecording() {
+        val p = PlaybackService.player
+        if (p != null && p.isPlaying) {
+            p.pause()
+            resumeMainPlaybackAfterRecording = true
         } else {
-            @Suppress("DEPRECATION")
-            audioManager.requestAudioFocus(
-                null,
-                AudioManager.STREAM_MUSIC,
-                AudioManager.AUDIOFOCUS_GAIN,
-            )
+            resumeMainPlaybackAfterRecording = false
         }
     }
 
-    private fun releaseRecordingAudioFocus() {
-        val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            recordingAudioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
-            recordingAudioFocusRequest = null
-        } else {
-            @Suppress("DEPRECATION")
-            audioManager.abandonAudioFocus(null)
-        }
+    private fun resumeMainPlaybackIfNeeded() {
+        if (!resumeMainPlaybackAfterRecording) return
+        resumeMainPlaybackAfterRecording = false
+        PlaybackService.player?.play()
     }
 }

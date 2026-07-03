@@ -22,10 +22,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
+import com.codestudio71.spoticious.ui.theme.MiamiPanelFill
+import com.codestudio71.spoticious.ui.theme.MiamiPanelFillHighlighted
 import com.codestudio71.spoticious.ui.theme.MiamiPink
-
-/** Ciemne tło aplikacji — półprzezroczyste, gradient ekranu prześwieca. */
-private val MiamiFrameFill = Color(0xFF0D0D1A).copy(alpha = 0.8f)
 
 private val MiamiFrameShape = RoundedCornerShape(16.dp)
 
@@ -49,12 +48,7 @@ fun MiamiFrame(
             MiamiCyan.copy(alpha = 0.85f)
         }
     val elevation = if (highlighted) 8.dp else 4.dp
-    val fill =
-        if (highlighted) {
-            MiamiFrameFill.copy(alpha = 0.92f)
-        } else {
-            MiamiFrameFill
-        }
+    val fill = if (highlighted) MiamiPanelFillHighlighted else MiamiPanelFill
 
     val frameModifier =
         if (solidFill) {

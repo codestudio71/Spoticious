@@ -9,12 +9,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -60,6 +60,7 @@ import com.codestudio71.spoticious.ui.components.MiniPlayer
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
 import com.codestudio71.spoticious.ui.theme.MiamiGradientColors
 import com.codestudio71.spoticious.ui.theme.MiamiPink
+import com.codestudio71.spoticious.ui.theme.miamiMenuSurface
 
 enum class Tab(
     val titleResId: Int,
@@ -351,56 +352,51 @@ private fun MainTopBar(
 ) {
     val searchActive = selectedTab == Tab.UTWORY || selectedTab == Tab.FOLDERY
 
-    Row(
+    Box(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(start = 8.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (searchActive) {
-                SortDotsButton(
-                    sortMode = sortMode,
-                    onSortModeChange = onSortModeChange,
-                    sortMenuExpanded = sortMenuExpanded,
-                    onSortMenuExpandedChange = onSortMenuExpandedChange,
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                androidx.compose.animation.AnimatedVisibility(visible = !searchExpanded) {
-                    Text(
-                        text = stringResource(R.string.search),
-                        color = MiamiCyan,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.clickable(onClick = onSearchClick),
-                    )
-                }
-            }
-            androidx.compose.animation.AnimatedVisibility(
-                visible = searchExpanded && searchActive,
-                modifier = Modifier.weight(1f),
-            ) {
-                    Row(
-                        modifier = Modifier
+        Text(
+            text = stringResource(R.string.extra),
+            color = MiamiPink,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Medium,
+            modifier =
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .clickable(onClick = onExtraClick)
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+        )
+
+        if (searchActive) {
+            if (searchExpanded) {
+                Row(
+                    modifier =
+                        Modifier
                             .fillMaxWidth()
-                            .padding(end = 16.dp)
-                            .background(
-                                MiamiCyan.copy(alpha = 0.15f),
-                                RoundedCornerShape(8.dp)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = MiamiCyan.copy(alpha = 0.4f),
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .align(Alignment.CenterStart)
+                            .padding(end = 52.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .padding(end = 8.dp)
+                                .background(
+                                    MiamiCyan.copy(alpha = 0.15f),
+                                    RoundedCornerShape(8.dp),
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = MiamiCyan.copy(alpha = 0.4f),
+                                    shape = RoundedCornerShape(8.dp),
+                                )
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         BasicTextField(
                             value = searchQuery,
@@ -415,73 +411,93 @@ private fun MainTopBar(
                                         Text(
                                             stringResource(R.string.search_placeholder),
                                             color = Color.White.copy(alpha = 0.6f),
-                                            fontSize = 16.sp
+                                            fontSize = 16.sp,
                                         )
                                     }
                                     inner()
                                 }
-                            }
+                            },
                         )
                         IconButton(onClick = onSearchClose) {
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = stringResource(R.string.close),
-                                tint = Color.White.copy(alpha = 0.7f)
+                                tint = Color.White.copy(alpha = 0.7f),
                             )
                         }
                     }
+                    SortShelvesButton(
+                        sortMode = sortMode,
+                        onSortModeChange = onSortModeChange,
+                        sortMenuExpanded = sortMenuExpanded,
+                        onSortMenuExpandedChange = onSortMenuExpandedChange,
+                    )
                 }
+            } else {
+                Text(
+                    text = stringResource(R.string.search),
+                    color = MiamiCyan,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier =
+                        Modifier
+                            .align(Alignment.CenterStart)
+                            .clickable(onClick = onSearchClick),
+                )
+                SortShelvesButton(
+                    sortMode = sortMode,
+                    onSortModeChange = onSortModeChange,
+                    sortMenuExpanded = sortMenuExpanded,
+                    onSortMenuExpandedChange = onSortMenuExpandedChange,
+                    modifier = Modifier.align(Alignment.Center),
+                )
+            }
         }
-
-        Text(
-            text = stringResource(R.string.extra),
-            color = MiamiPink,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Medium,
-            modifier =
-                Modifier
-                    .clickable(onClick = onExtraClick)
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
-        )
     }
 }
 
 @Composable
-private fun SortDotsButton(
+private fun SortShelvesButton(
     sortMode: TrackSortOrder,
     onSortModeChange: (TrackSortOrder) -> Unit,
     sortMenuExpanded: Boolean,
     onSortMenuExpandedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Box {
+    val shelfColors =
+        listOf(
+            Color(0xFF0066FF),
+            Color(0xFF00AACC),
+            Color(0xFF00E5FF),
+        )
+    val shelfShape = RoundedCornerShape(2.dp)
+
+    Box(modifier = modifier) {
         Column(
             modifier =
                 Modifier
                     .clickable { onSortMenuExpandedChange(true) }
-                    .padding(vertical = 8.dp, horizontal = 2.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(4.dp)
-                    .background(Color(0xFF0066FF), CircleShape),
-            )
-            Box(
-                modifier = Modifier
-                    .size(4.dp)
-                    .background(Color(0xFF00AACC), CircleShape),
-            )
-            Box(
-                modifier = Modifier
-                    .size(4.dp)
-                    .background(Color(0xFF00E5FF), CircleShape),
-            )
+            shelfColors.forEach { color ->
+                Box(
+                    modifier =
+                        Modifier
+                            .width(22.dp)
+                            .height(3.dp)
+                            .background(color, shelfShape),
+                )
+            }
         }
         DropdownMenu(
             expanded = sortMenuExpanded,
             onDismissRequest = { onSortMenuExpandedChange(false) },
-            modifier = Modifier.background(Color(0xFF1A1F26))
+            modifier = Modifier.miamiMenuSurface(),
+            containerColor = Color.Transparent,
+            tonalElevation = 0.dp,
+            shadowElevation = 8.dp,
         ) {
             Text(
                 text = stringResource(R.string.sort_by),

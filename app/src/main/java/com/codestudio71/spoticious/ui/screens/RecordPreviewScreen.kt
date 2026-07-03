@@ -82,6 +82,8 @@ import com.codestudio71.spoticious.audio.record.RecordViewModel
 import com.codestudio71.spoticious.audio.record.RecordingState
 import com.codestudio71.spoticious.ui.components.MiamiFrame
 import com.codestudio71.spoticious.ui.components.WaveformWithMeter
+import com.codestudio71.spoticious.ui.theme.MiamiDialogFill
+import com.codestudio71.spoticious.ui.theme.miamiMenuSurface
 import java.util.Locale
 
 private val CyanUi = Color(0xFF00BCD4)
@@ -336,7 +338,10 @@ fun RecordPreviewScreen(
                 DropdownMenu(
                     expanded = deviceMenu,
                     onDismissRequest = { deviceMenu = false },
-                    modifier = Modifier.background(Color(0xFF1A1F26)),
+                    modifier = Modifier.miamiMenuSurface(),
+                    containerColor = Color.Transparent,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 8.dp,
                 ) {
                     inputDevices.forEach { opt ->
                         DropdownMenuItem(
@@ -392,7 +397,10 @@ fun RecordPreviewScreen(
                     DropdownMenu(
                         expanded = outputDeviceMenu,
                         onDismissRequest = { outputDeviceMenu = false },
-                        modifier = Modifier.background(Color(0xFF1A1F26)),
+                        modifier = Modifier.miamiMenuSurface(),
+                        containerColor = Color.Transparent,
+                        tonalElevation = 0.dp,
+                        shadowElevation = 8.dp,
                     ) {
                         outputDevices.forEach { opt ->
                             DropdownMenuItem(
@@ -765,7 +773,7 @@ fun RecordPreviewScreen(
                     Text(stringResource(R.string.cancel), color = Color.Gray)
                 }
             },
-            containerColor = Color(0xFF1A1F26),
+            containerColor = MiamiDialogFill,
         )
     }
 
@@ -797,7 +805,7 @@ fun RecordPreviewScreen(
                     Text(stringResource(R.string.cancel), color = Color.Gray)
                 }
             },
-            containerColor = Color(0xFF1A1F26),
+            containerColor = MiamiDialogFill,
         )
     }
 }
