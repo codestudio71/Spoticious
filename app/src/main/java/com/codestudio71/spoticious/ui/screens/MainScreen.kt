@@ -23,6 +23,9 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
@@ -35,12 +38,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -52,6 +58,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.codestudio71.spoticious.R
+import com.codestudio71.spoticious.data.UiPrefKeys
+import com.codestudio71.spoticious.data.uiPreferencesDataStore
+import androidx.datastore.preferences.core.edit
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import com.codestudio71.spoticious.folders.FoldersViewModel
 import com.codestudio71.spoticious.folders.TrackSortOrder
 import com.codestudio71.spoticious.player.PlayerViewModel
@@ -85,6 +96,11 @@ fun MainScreen(modifier: Modifier = Modifier) {
     var searchQuery by remember { mutableStateOf("") }
     var sortMode by remember { mutableStateOf(TrackSortOrder.NAME_ASC) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val showTrackNumbers by context.uiPreferencesDataStore.data
+        .map { prefs -> prefs[UiPrefKeys.SHOW_TRACK_NUMBERS] ?: false }
+        .collectAsState(initial = false)
     val playerViewModel: PlayerViewModel = viewModel()
     val foldersViewModel: FoldersViewModel = viewModel()
 
@@ -157,6 +173,14 @@ fun MainScreen(modifier: Modifier = Modifier) {
                         onSortModeChange = { sortMode = it },
                         sortMenuExpanded = sortMenuExpanded,
                         onSortMenuExpandedChange = { sortMenuExpanded = it },
+                        showTrackNumbers = showTrackNumbers,
+                        onShowTrackNumbersChange = { enabled ->
+                            scope.launch {
+                                context.uiPreferencesDataStore.edit { prefs ->
+                                    prefs[UiPrefKeys.SHOW_TRACK_NUMBERS] = enabled
+                                }
+                            }
+                        },
                     )
                 }
             },
@@ -303,6 +327,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                         foldersViewModel = foldersViewModel,
                         searchQuery = searchQuery,
                         sortMode = sortMode,
+                        showTrackNumbers = showTrackNumbers,
                         onOpenFullPlayer = openFullPlayer
                     )
                     Tab.FOLDERY -> FoldersScreen(
@@ -348,7 +373,9 @@ private fun MainTopBar(
     sortMode: TrackSortOrder,
     onSortModeChange: (TrackSortOrder) -> Unit,
     sortMenuExpanded: Boolean,
-    onSortMenuExpandedChange: (Boolean) -> Unit
+    onSortMenuExpandedChange: (Boolean) -> Unit,
+    showTrackNumbers: Boolean,
+    onShowTrackNumbersChange: (Boolean) -> Unit,
 ) {
     val searchActive = selectedTab == Tab.UTWORY || selectedTab == Tab.FOLDERY
 
@@ -431,6 +458,9 @@ private fun MainTopBar(
                         onSortModeChange = onSortModeChange,
                         sortMenuExpanded = sortMenuExpanded,
                         onSortMenuExpandedChange = onSortMenuExpandedChange,
+                        showTrackNumbers = showTrackNumbers,
+                        onShowTrackNumbersChange = onShowTrackNumbersChange,
+                        showTrackNumberingToggle = selectedTab == Tab.UTWORY,
                     )
                 }
             } else {
@@ -449,6 +479,9 @@ private fun MainTopBar(
                     onSortModeChange = onSortModeChange,
                     sortMenuExpanded = sortMenuExpanded,
                     onSortMenuExpandedChange = onSortMenuExpandedChange,
+                    showTrackNumbers = showTrackNumbers,
+                    onShowTrackNumbersChange = onShowTrackNumbersChange,
+                    showTrackNumberingToggle = selectedTab == Tab.UTWORY,
                     modifier = Modifier.align(Alignment.Center),
                 )
             }
@@ -462,6 +495,9 @@ private fun SortShelvesButton(
     onSortModeChange: (TrackSortOrder) -> Unit,
     sortMenuExpanded: Boolean,
     onSortMenuExpandedChange: (Boolean) -> Unit,
+    showTrackNumbers: Boolean,
+    onShowTrackNumbersChange: (Boolean) -> Unit,
+    showTrackNumberingToggle: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val shelfColors =
@@ -525,6 +561,37 @@ private fun SortShelvesButton(
                         onSortMenuExpandedChange(false)
                     }
                 )
+            }
+            if (showTrackNumberingToggle) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    color = Color.White.copy(alpha = 0.12f),
+                )
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.track_numbering),
+                        color = Color.White,
+                        fontSize = 14.sp,
+                    )
+                    Switch(
+                        checked = showTrackNumbers,
+                        onCheckedChange = onShowTrackNumbersChange,
+                        colors =
+                            SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = MiamiCyan,
+                                uncheckedThumbColor = Color.White.copy(alpha = 0.85f),
+                                uncheckedTrackColor = Color.White.copy(alpha = 0.25f),
+                            ),
+                    )
+                }
             }
         }
     }

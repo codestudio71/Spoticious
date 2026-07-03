@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -92,6 +92,7 @@ fun TracksScreen(
     foldersViewModel: FoldersViewModel,
     searchQuery: String = "",
     sortMode: TrackSortOrder = TrackSortOrder.NAME_ASC,
+    showTrackNumbers: Boolean = false,
     onOpenFullPlayer: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -433,10 +434,10 @@ fun TracksScreen(
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
-                    items(filteredFiles, key = { it.id }) { file ->
-                        val index = filteredFiles.indexOf(file)
+                    itemsIndexed(filteredFiles, key = { _, file -> file.id }) { index, file ->
                         TrackRow(
                             file = file,
+                            trackNumber = if (showTrackNumbers) index + 1 else null,
                             isSelected = playerViewModel.isSelectedTrack(file.uri, selectedUri),
                             onClick = {
                                 if (!playerViewModel.isCurrentTrackUri(file.uri)) {
@@ -483,6 +484,7 @@ fun TracksScreen(
 @Composable
 private fun TrackRow(
     file: AudioFile,
+    trackNumber: Int? = null,
     isSelected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit
@@ -507,6 +509,15 @@ private fun TrackRow(
                 .padding(vertical = 11.dp, horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (trackNumber != null) {
+            Text(
+                text = "$trackNumber.",
+                color = MiamiCyan,
+                fontSize = 15.sp,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                modifier = Modifier.padding(end = 8.dp),
+            )
+        }
         Text(
             text = file.displayName,
             color = Color.White,

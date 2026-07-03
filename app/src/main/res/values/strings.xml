@@ -19,6 +19,7 @@
     <string name="sort_duration_desc">Duration (descending)</string>
     <string name="sort_date_asc">Date created (oldest)</string>
     <string name="sort_date_desc">Date created (newest)</string>
+    <string name="track_numbering">Number tracks</string>
 
     <!-- Common -->
     <string name="back">Back</string>
