@@ -52,14 +52,12 @@ fun WrappedScreen(
 ) {
     val period by viewModel.period.collectAsState()
     val topTracks by viewModel.topTracks.collectAsState()
-    val topArtists by viewModel.topArtists.collectAsState()
     val topTracksByTime by viewModel.topTracksByTime.collectAsState()
-    val topArtistsByTime by viewModel.topArtistsByTime.collectAsState()
     val totalPlays by viewModel.totalPlays.collectAsState()
     val totalTimeMs by viewModel.totalTimeMs.collectAsState()
     val loading by viewModel.loading.collectAsState()
 
-    val isEmpty = !loading && totalPlays == 0
+    val isEmpty = !loading && totalPlays == 0 && totalTimeMs == 0L
 
     LaunchedEffect(Unit) {
         viewModel.refresh()
@@ -191,33 +189,6 @@ fun WrappedScreen(
                     rows =
                         topTracksByTime.map { row ->
                             row.title to
-                                stringResource(
-                                    R.string.wrapped_listen_time,
-                                    formatWrappedDuration(row.listenedMs),
-                                )
-                        },
-                )
-
-                Spacer(Modifier.height(20.dp))
-
-                WrappedRankingSection(
-                    title = stringResource(R.string.wrapped_top_artists),
-                    rows =
-                        topArtists.map { row ->
-                            (row.artist?.takeIf { it.isNotBlank() }
-                                ?: stringResource(R.string.wrapped_unknown_artist)) to
-                                stringResource(R.string.wrapped_play_count, row.playCount)
-                        },
-                )
-
-                Spacer(Modifier.height(20.dp))
-
-                WrappedRankingSection(
-                    title = stringResource(R.string.wrapped_top_artists_time),
-                    rows =
-                        topArtistsByTime.map { row ->
-                            (row.artist?.takeIf { it.isNotBlank() }
-                                ?: stringResource(R.string.wrapped_unknown_artist)) to
                                 stringResource(
                                     R.string.wrapped_listen_time,
                                     formatWrappedDuration(row.listenedMs),

@@ -3,8 +3,6 @@ package com.codestudio71.spoticious.ui.wrapped
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.codestudio71.spoticious.data.wrapped.ArtistListenTime
-import com.codestudio71.spoticious.data.wrapped.ArtistPlayCount
 import com.codestudio71.spoticious.data.wrapped.SpoticiousDatabase
 import com.codestudio71.spoticious.data.wrapped.TitleListenTime
 import com.codestudio71.spoticious.data.wrapped.TitlePlayCount
@@ -26,14 +24,8 @@ class WrappedViewModel(application: Application) : AndroidViewModel(application)
     private val _topTracks = MutableStateFlow<List<TitlePlayCount>>(emptyList())
     val topTracks: StateFlow<List<TitlePlayCount>> = _topTracks.asStateFlow()
 
-    private val _topArtists = MutableStateFlow<List<ArtistPlayCount>>(emptyList())
-    val topArtists: StateFlow<List<ArtistPlayCount>> = _topArtists.asStateFlow()
-
     private val _topTracksByTime = MutableStateFlow<List<TitleListenTime>>(emptyList())
     val topTracksByTime: StateFlow<List<TitleListenTime>> = _topTracksByTime.asStateFlow()
-
-    private val _topArtistsByTime = MutableStateFlow<List<ArtistListenTime>>(emptyList())
-    val topArtistsByTime: StateFlow<List<ArtistListenTime>> = _topArtistsByTime.asStateFlow()
 
     private val _totalPlays = MutableStateFlow(0)
     val totalPlays: StateFlow<Int> = _totalPlays.asStateFlow()
@@ -60,9 +52,7 @@ class WrappedViewModel(application: Application) : AndroidViewModel(application)
             val since = _period.value.sinceMs()
             withContext(Dispatchers.IO) {
                 _topTracks.value = dao.topTracks(since)
-                _topArtists.value = dao.topArtists(since)
                 _topTracksByTime.value = dao.topTracksByTime(since)
-                _topArtistsByTime.value = dao.topArtistsByTime(since)
                 _totalPlays.value = dao.totalPlays(since)
                 _totalTimeMs.value = dao.totalListenedTimeMs(since)
             }

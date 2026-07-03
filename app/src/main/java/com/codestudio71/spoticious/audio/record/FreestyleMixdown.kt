@@ -19,6 +19,8 @@ object FreestyleMixdown {
 
     /**
      * Nadpisuje [vocalWav] zmiksowanym mono PCM WAV (ten sam sample rate co nagranie).
+     * @param beatStartOffsetMs beat wystartował później niż mikrofon o tyle ms —
+     *   w miksie beat jest przesunięty w przód, żeby wokal i beat się nie rozjechały.
      * @return false przy błędzie odczytu wokalu lub dekodowania bitu.
      */
     fun mixInPlace(
@@ -27,6 +29,7 @@ object FreestyleMixdown {
         beatUri: Uri,
         targetSampleRate: Int,
         beatGain: Float = BEAT_GAIN,
+        beatStartOffsetMs: Long = 0L,
     ): Boolean {
         val vocal = readMonoPcmWav(vocalWav) ?: return false
         if (vocal.samples.isEmpty()) return false
@@ -36,12 +39,18 @@ object FreestyleMixdown {
             PcmStreamDecoder.decodeUriToMonoFloat(context, beatUri, rate)
                 ?: return false
 
+        val beatOffsetSamples =
+            (beatStartOffsetMs.coerceAtLeast(0L) * rate / 1000L)
+                .coerceAtMost(vocal.samples.size.toLong())
+                .toInt()
+
         val mixed =
             mixMonoFloat(
                 vocalSamples = vocal.samples,
                 beatSamples = beatMono,
                 vocalGain = VOCAL_GAIN,
                 beatGain = beatGain.coerceIn(0f, 1f),
+                beatOffsetSamples = beatOffsetSamples,
             )
 
         return writeMonoPcmWav(vocalWav, mixed, rate, vocal.bitsPerSample)
@@ -58,11 +67,13 @@ object FreestyleMixdown {
         beatSamples: FloatArray,
         vocalGain: Float,
         beatGain: Float,
+        beatOffsetSamples: Int = 0,
     ): FloatArray {
         val out = FloatArray(vocalSamples.size)
         for (i in vocalSamples.indices) {
             val v = vocalSamples[i] * vocalGain
-            val b = if (i < beatSamples.size) beatSamples[i] * beatGain else 0f
+            val bi = i - beatOffsetSamples
+            val b = if (bi in beatSamples.indices) beatSamples[bi] * beatGain else 0f
             out[i] = (v + b).coerceIn(-1f, 1f)
         }
         return out

@@ -68,6 +68,12 @@
     <string name="record_headset_continue">Nagraj mimo to</string>
     <string name="record_switched_usb_mic">Przełączono na mikrofon USB</string>
     <string name="record_freestyle_mix_failed">Nie udało się zmiksować bitu z wokalem. Zapisano sam głos.</string>
+    <string name="record_mic_signal_lost">Utracono sygnał mikrofonu — sprawdź uprawnienie i połączenie.</string>
+    <string name="record_mixing">Miksowanie bitu z wokalem…</string>
+    <string name="record_notif_channel_name">Nagrywanie</string>
+    <string name="record_notif_title">Trwa nagrywanie</string>
+    <string name="record_notif_text">Nagrywanie %1$s</string>
+    <string name="record_notif_stop">Stop</string>
     <string name="coming_soon">Wkrótce</string>
     <string name="playlist">Playlista</string>
     <string name="playlist_queue">Kolejka odtwarzania</string>
@@ -156,6 +162,13 @@
     <string name="master_data_header_lufs_s">LUFS-S</string>
     <string name="master_data_header_lufs_i">LUFS-I</string>
     <string name="master_data_header_lra">LRA</string>
+    <string name="master_data_glossary_title">Co znaczą te liczby?</string>
+    <string name="master_data_glossary_peak">Peak — najgłośniejszy pojedynczy moment utworu. 0.0 dB to sufit: wszystko powyżej zostaje ścięte (przester).</string>
+    <string name="master_data_glossary_clips">Clips — ile razy sygnał uderzył w sufit i został ścięty. 0 = czysto; duża liczba = słyszalny przester.</string>
+    <string name="master_data_glossary_lufs_m">LUFS-M (Momentary) — głośność w tej chwili, mierzona z ostatnich 0,4 s. Skacze razem z muzyką.</string>
+    <string name="master_data_glossary_lufs_s">LUFS-S (Short-term) — głośność ostatnich 3 s. Spokojniejszy niż Momentary.</string>
+    <string name="master_data_glossary_lufs_i">LUFS-I (Integrated) — średnia głośność całego utworu. Na tę liczbę patrzą platformy streamingowe: Spotify i YouTube normalizują do ok. -14, Apple Music do ok. -16. Głośniejsze mastery są ściszane.</string>
+    <string name="master_data_glossary_lra">LRA — rozpiętość dynamiki w LU: różnica między cichymi i głośnymi fragmentami. Mało (2-5) = gęsto, mocno skompresowane; dużo (8+) = duże wahania dynamiki.</string>
     <string name="shuffle">Losowo</string>
     <string name="previous">Poprzedni</string>
     <string name="next">Następny</string>

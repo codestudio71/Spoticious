@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -125,6 +126,11 @@ fun RecordPreviewScreen(
     val savedTakeDurMs by viewModel.savedTakeDurationMs.collectAsState()
     val savedTakePlaying by viewModel.savedTakeIsPlaying.collectAsState()
 
+    val recordingElapsedMs by viewModel.recordingElapsedMs.collectAsState()
+    val mixInProgress by viewModel.mixInProgress.collectAsState()
+    val beatPosMs by viewModel.beatPositionMs.collectAsState()
+    val beatDurMs by viewModel.beatDurationMs.collectAsState()
+
     var deviceMenu by remember { mutableStateOf(false) }
     var outputDeviceMenu by remember { mutableStateOf(false) }
     var headsetDialog by remember { mutableStateOf(false) }
@@ -143,9 +149,10 @@ fun RecordPreviewScreen(
 
     val permLauncher =
         rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission(),
-        ) { granted ->
-            if (!granted) {
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { grants ->
+            // POST_NOTIFICATIONS jest opcjonalne (notyfikacja FGS); blokuje tylko brak mikrofonu.
+            if (grants[Manifest.permission.RECORD_AUDIO] != true) {
                 Toast.makeText(context, context.getString(R.string.record_error_start), Toast.LENGTH_SHORT).show()
             } else {
                 tryStartRecording(skipHeadsetAdvice, viewModel) { headsetDialog = true }
@@ -167,12 +174,8 @@ fun RecordPreviewScreen(
     val isFreestyle = mode == RecordMode.Freestyle
     val isSaved = recState is RecordingState.Saved
 
-    val durMs =
-        when (val st = recState) {
-            is RecordingState.Recording -> st.durationMs
-            else -> 0L
-        }
-    val formattedDuration = formatRecordTime(durMs)
+    // recordingElapsedMs nie resetuje się w stanie Stopping — timer nie skacze do 00:00.
+    val formattedDuration = formatRecordTime(recordingElapsedMs)
 
     val selectedDeviceName =
         pickedLabel
@@ -201,7 +204,7 @@ fun RecordPreviewScreen(
             is RecordingState.Stopping -> {}
             else -> {
                 if (!hasAudioPermission(context)) {
-                    permLauncher.launch(RecordViewModel.PERMISSION_RECORD_AUDIO)
+                    permLauncher.launch(recordingPermissions())
                 } else {
                     tryStartRecording(skipHeadsetAdvice, viewModel) {
                         headsetDialog = true
@@ -523,6 +526,18 @@ fun RecordPreviewScreen(
                     peakDbfs = beatPeakDbfs,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (beatDurMs > 0L) {
+                    Text(
+                        text = "BEAT  ${formatRecordTime(beatPosMs)} / ${formatRecordTime(beatDurMs)}",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 12.sp,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp),
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
             Spacer(Modifier.height(16.dp))
         } else if (isSaved) {
@@ -655,16 +670,50 @@ fun RecordPreviewScreen(
         }
 
         if (!isSaved) {
-            Text(
-                text = formattedDuration,
-                color = CyanUi,
-                fontSize = 22.sp,
+            Row(
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
-                textAlign = TextAlign.Center,
-            )
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (isRecording) {
+                    Icon(
+                        Icons.Default.FiberManualRecord,
+                        contentDescription = null,
+                        tint = RecRed,
+                        modifier = Modifier.size(16.dp).padding(end = 4.dp),
+                    )
+                }
+                Text(
+                    text = formattedDuration,
+                    color = if (isRecording) RecRed else CyanUi,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+
+        if (isBusy || mixInProgress) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(
+                    color = CyanUi,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    text = stringResource(R.string.record_mixing),
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+            Spacer(Modifier.height(8.dp))
         }
 
         Spacer(Modifier.height(16.dp))
@@ -676,7 +725,7 @@ fun RecordPreviewScreen(
             Button(
                 onClick = toggleRecording,
                 modifier = Modifier.size(72.dp),
-                enabled = !isBusy,
+                enabled = !isBusy && !mixInProgress,
                 shape = CircleShape,
                 contentPadding = PaddingValues(0.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = RecRed),
@@ -763,6 +812,13 @@ private fun beatOutputIcon(type: Int): ImageVector =
 private fun hasAudioPermission(context: android.content.Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
         android.content.pm.PackageManager.PERMISSION_GRANTED
+
+private fun recordingPermissions(): Array<String> =
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS)
+    } else {
+        arrayOf(Manifest.permission.RECORD_AUDIO)
+    }
 
 private fun tryStartRecording(
     skipHeadsetAdvice: Boolean,

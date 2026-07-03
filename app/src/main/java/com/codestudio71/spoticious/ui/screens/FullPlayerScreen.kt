@@ -35,7 +35,7 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -110,6 +110,7 @@ fun FullPlayerScreen(
         }.orEmpty()
     }
     var masterDataEnabled by rememberSaveable(masterDataSaveKey) { mutableStateOf(false) }
+    var glossaryDialog by remember { mutableStateOf(false) }
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     val sleepTimerRemaining by viewModel.sleepTimerRemainingMinutes.collectAsState()
 
@@ -125,6 +126,40 @@ fun FullPlayerScreen(
                 viewModel.cancelSleepTimer()
                 showSleepTimerDialog = false
             }
+        )
+    }
+
+    if (glossaryDialog) {
+        AlertDialog(
+            onDismissRequest = { glossaryDialog = false },
+            containerColor = Color(0xFF1A1F26),
+            title = {
+                Text(
+                    text = stringResource(R.string.master_data_title),
+                    color = MiamiCyan,
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    MasterDataGlossaryEntry(stringResource(R.string.master_data_glossary_peak))
+                    Spacer(modifier = Modifier.height(10.dp))
+                    MasterDataGlossaryEntry(stringResource(R.string.master_data_glossary_clips))
+                    Spacer(modifier = Modifier.height(10.dp))
+                    MasterDataGlossaryEntry(stringResource(R.string.master_data_glossary_lufs_m))
+                    Spacer(modifier = Modifier.height(10.dp))
+                    MasterDataGlossaryEntry(stringResource(R.string.master_data_glossary_lufs_s))
+                    Spacer(modifier = Modifier.height(10.dp))
+                    MasterDataGlossaryEntry(stringResource(R.string.master_data_glossary_lufs_i))
+                    Spacer(modifier = Modifier.height(10.dp))
+                    MasterDataGlossaryEntry(stringResource(R.string.master_data_glossary_lra))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { glossaryDialog = false }) {
+                    Text("OK", color = MiamiCyan)
+                }
+            },
         )
     }
 
@@ -415,12 +450,25 @@ fun FullPlayerScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = stringResource(R.string.master_data_title),
-                            color = MiamiCyan,
-                            fontSize = 14.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(R.string.master_data_title),
+                                color = MiamiCyan,
+                                fontSize = 14.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            IconButton(
+                                onClick = { glossaryDialog = true },
+                                modifier = Modifier.size(32.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Info,
+                                    contentDescription = stringResource(R.string.master_data_glossary_title),
+                                    tint = MiamiCyan,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                        }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = if (masterDataEnabled) stringResource(R.string.eq_on) else stringResource(R.string.eq_off),
@@ -784,6 +832,31 @@ private fun CustomSeekBar(
                     }
             )
         }
+    }
+}
+
+@Composable
+private fun MasterDataGlossaryEntry(text: String) {
+    val separator = " — "
+    val splitIndex = text.indexOf(separator)
+    if (splitIndex >= 0) {
+        Text(
+            text = text.substring(0, splitIndex),
+            color = MiamiCyan,
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp,
+        )
+        Text(
+            text = text.substring(splitIndex + separator.length),
+            color = Color.White.copy(alpha = 0.85f),
+            fontSize = 13.sp,
+        )
+    } else {
+        Text(
+            text = text,
+            color = Color.White.copy(alpha = 0.85f),
+            fontSize = 13.sp,
+        )
     }
 }
 

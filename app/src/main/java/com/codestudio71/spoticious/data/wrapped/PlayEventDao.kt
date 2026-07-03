@@ -9,18 +9,8 @@ data class TitlePlayCount(
     val playCount: Int,
 )
 
-data class ArtistPlayCount(
-    val artist: String?,
-    val playCount: Int,
-)
-
 data class TitleListenTime(
     val title: String,
-    val listenedMs: Long,
-)
-
-data class ArtistListenTime(
-    val artist: String?,
     val listenedMs: Long,
 )
 
@@ -32,6 +22,9 @@ interface PlayEventDao {
 
     @Query("UPDATE play_events SET listenedMs = :listenedMs WHERE id = :id")
     suspend fun updateListenedMs(id: Long, listenedMs: Long)
+
+    @Query("UPDATE play_events SET qualified = 1 WHERE id = :id")
+    suspend fun markQualified(id: Long)
 
     @Query(
         """
@@ -47,28 +40,18 @@ interface PlayEventDao {
 
     @Query(
         """
-        SELECT artist AS artist, COUNT(*) AS playCount
-        FROM play_events
-        WHERE playedAtMs >= :sinceMs AND qualified = 1
-        GROUP BY artist
-        ORDER BY playCount DESC
-        LIMIT 10
-        """,
-    )
-    suspend fun topArtists(sinceMs: Long): List<ArtistPlayCount>
-
-    @Query(
-        """
         SELECT COUNT(*) FROM play_events
         WHERE playedAtMs >= :sinceMs AND qualified = 1
         """,
     )
     suspend fun totalPlays(sinceMs: Long): Int
 
+    // Czas liczony ze WSZYSTKICH sesji (także < progu 30 s) — inaczej statystyka
+    // "skacze" dopiero po kwalifikacji i wygląda na liczoną co 30 s.
     @Query(
         """
         SELECT COALESCE(SUM(listenedMs), 0) FROM play_events
-        WHERE playedAtMs >= :sinceMs AND qualified = 1
+        WHERE playedAtMs >= :sinceMs
         """,
     )
     suspend fun totalListenedTimeMs(sinceMs: Long): Long
@@ -77,23 +60,11 @@ interface PlayEventDao {
         """
         SELECT title AS title, COALESCE(SUM(listenedMs), 0) AS listenedMs
         FROM play_events
-        WHERE playedAtMs >= :sinceMs AND qualified = 1
+        WHERE playedAtMs >= :sinceMs
         GROUP BY title
         ORDER BY listenedMs DESC
         LIMIT 10
         """,
     )
     suspend fun topTracksByTime(sinceMs: Long): List<TitleListenTime>
-
-    @Query(
-        """
-        SELECT artist AS artist, COALESCE(SUM(listenedMs), 0) AS listenedMs
-        FROM play_events
-        WHERE playedAtMs >= :sinceMs AND qualified = 1
-        GROUP BY artist
-        ORDER BY listenedMs DESC
-        LIMIT 10
-        """,
-    )
-    suspend fun topArtistsByTime(sinceMs: Long): List<ArtistListenTime>
 }

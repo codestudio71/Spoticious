@@ -25,18 +25,13 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.resume
 import kotlin.math.log10
 
 enum class RecordMode {
     Freestyle,
     VoiceOnly,
 }
-
-private const val SAMPLE_RATE_DEFAULT = 48_000
-private const val BIT_DEPTH_DEFAULT = 24
 
 private const val VU_ATTACK = 0.4f
 
@@ -48,8 +43,9 @@ private const val WAVE_SNAPSHOT_INTERVAL_MS = 33L
 
 class RecordViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val vocalRecorder = VocalRecorder()
-    private val beatPreviewPlayer = BeatPreviewPlayer(application)
+    /** Nagrywanie + beat żyją w [RecordingSession] (proces), nie w ViewModelu — patrz [RecordingService]. */
+    private val vocalRecorder = RecordingSession.vocalRecorder
+    private val beatPreviewPlayer = RecordingSession.beatPreviewPlayer
     private val savedTakePreviewPlayer = SavedTakePreviewPlayer(application)
     private val deviceRepo = RecordingDeviceRepository(application)
     private val outputDeviceRepo = BeatOutputDeviceRepository(application)
@@ -135,6 +131,10 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     val recordingState: StateFlow<RecordingState> = vocalRecorder.recordingState
 
+    /** Ostatni czas nagrania (nie resetuje się w Stopping) + flaga miksu w tle. */
+    val recordingElapsedMs: StateFlow<Long> = RecordingSession.recordingElapsedMs
+    val mixInProgress: StateFlow<Boolean> = RecordingSession.mixInProgress
+
     val beatPositionMs: StateFlow<Long> = beatPreviewPlayer.positionMs
     val beatDurationMs: StateFlow<Long> = beatPreviewPlayer.durationMs
     val beatIsPlaying: StateFlow<Boolean> = beatPreviewPlayer.isPlaying
@@ -143,18 +143,15 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     val savedTakeDurationMs: StateFlow<Long> = savedTakePreviewPlayer.durationMs
     val savedTakeIsPlaying: StateFlow<Boolean> = savedTakePreviewPlayer.isPlaying
 
-    private val _mode = MutableStateFlow(RecordMode.Freestyle)
-    val mode: StateFlow<RecordMode> = _mode.asStateFlow()
+    val mode: StateFlow<RecordMode> = RecordingSession.mode
 
-    private val _selectedBeatUri = MutableStateFlow<Uri?>(null)
-    val selectedBeatUri: StateFlow<Uri?> = _selectedBeatUri.asStateFlow()
+    val selectedBeatUri: StateFlow<Uri?> = RecordingSession.selectedBeatUri
 
     /** Głośność bitu (0..1) — wspólna dla podglądu i miksu freestyle. */
-    private val _beatGain = MutableStateFlow(FreestyleMixdown.BEAT_GAIN)
-    val beatGain: StateFlow<Float> = _beatGain.asStateFlow()
+    val beatGain: StateFlow<Float> = RecordingSession.beatGain
 
     val beatLabel: StateFlow<String?> =
-        _selectedBeatUri
+        selectedBeatUri
             .map { u ->
                 u?.lastPathSegment?.substringAfter(':')
                     ?: u?.toString()?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
@@ -170,9 +167,6 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     private var userOverrodeInputSelection = false
 
     private var hadUsbFamilyConnected = false
-
-    /** Pomija auto-load podglądu po Saved — miks freestyle zastąpi plik i załaduje ręcznie. */
-    private var deferSavedPreviewLoad = false
 
     val pickedInputLabel: StateFlow<String?> =
         combine(deviceRepo.devices, _selectedDeviceId) { devices, id ->
@@ -193,6 +187,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             val frame = waveformAnalyzer.analyze24bit(bytes, 0, samples24)
             pushMicFrame(frame)
         }
+        vocalRecorder.onMicSignalLost = { toastMicSignalLost() }
 
         viewModelScope.launch {
             deviceRepo.devices.collect { list -> onInputDevicesChanged(list) }
@@ -202,16 +197,21 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             outputDeviceRepo.devices.collect { list -> onOutputDevicesChanged(list) }
         }
 
+        // Podgląd ładujemy dopiero, gdy plik jest finalny (Saved + miks zakończony) —
+        // inaczej ExoPlayer trzymałby plik, który FreestyleMixdown nadpisuje.
         viewModelScope.launch {
-            vocalRecorder.recordingState.collect { st ->
-                when (st) {
-                    is RecordingState.Saved -> {
-                        if (deferSavedPreviewLoad) return@collect
-                        savedTakePreviewPlayer.loadFile(st.file)
+            combine(
+                vocalRecorder.recordingState,
+                RecordingSession.mixInProgress,
+            ) { st, mixing -> st to mixing }
+                .collect { (st, mixing) ->
+                    when {
+                        st is RecordingState.Saved && !mixing ->
+                            savedTakePreviewPlayer.loadFile(st.file)
+                        st is RecordingState.Saved && mixing -> Unit
+                        else -> savedTakePreviewPlayer.clear()
                     }
-                    else -> savedTakePreviewPlayer.clear()
                 }
-            }
         }
     }
 
@@ -294,11 +294,26 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun toastMicSignalLost() {
+        viewModelScope.launch(Dispatchers.Main) {
+            val app = getApplication<Application>()
+            Toast.makeText(
+                app,
+                app.getString(R.string.record_mic_signal_lost),
+                Toast.LENGTH_LONG,
+            ).show()
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
-        beatPreviewPlayer.release()
+        // Recorder i beat player należą do RecordingSession (przeżywają Activity) —
+        // tu odpinamy tylko callbacki wizualizacji i lokalne zasoby.
+        vocalRecorder.onWaveformFrame = null
+        vocalRecorder.onWaveformFrame24 = null
+        vocalRecorder.onMicSignalLost = null
+        beatPreviewPlayer.releaseVisualizer()
         savedTakePreviewPlayer.destroy()
-        vocalRecorder.release()
         deviceRepo.stop()
         outputDeviceRepo.stop()
     }
@@ -329,32 +344,24 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun toggleMode() {
-        when (_mode.value) {
-            RecordMode.Freestyle -> _mode.value = RecordMode.VoiceOnly
-            RecordMode.VoiceOnly -> _mode.value = RecordMode.Freestyle
-        }
-        if (_mode.value == RecordMode.VoiceOnly) {
-            _selectedBeatUri.value = null
-            beatPreviewPlayer.clear()
-        }
+        val next =
+            when (mode.value) {
+                RecordMode.Freestyle -> RecordMode.VoiceOnly
+                RecordMode.VoiceOnly -> RecordMode.Freestyle
+            }
+        RecordingSession.setMode(next)
     }
 
     fun pickBeat(uri: Uri) {
-        _selectedBeatUri.value = uri
-        beatPreviewPlayer.setPreferredOutputDevice(_selectedOutputDevice.value)
-        beatPreviewPlayer.loadBeat(uri)
-        beatPreviewPlayer.setVolume(_beatGain.value)
-        beatPreviewPlayer.seekToStart()
-        beatPreviewPlayer.pause()
+        RecordingSession.pickBeat(uri, _selectedOutputDevice.value)
     }
 
     /** Ten sam gain słychać w podglądzie (ExoPlayer) i w mixie po STOP. */
     fun setBeatGain(value: Float) {
         val g = value.coerceIn(0f, 1f)
-        val old = _beatGain.value
+        val old = beatGain.value
         if (old == g) return
-        _beatGain.value = g
-        beatPreviewPlayer.setVolume(g)
+        RecordingSession.setBeatGain(g)
         refreshBeatVisualizationForGain(old, g)
     }
 
@@ -367,8 +374,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun clearBeat() {
-        _selectedBeatUri.value = null
-        beatPreviewPlayer.clear()
+        RecordingSession.clearBeat()
     }
 
     fun setSelectedDevice(deviceId: Int) {
@@ -381,8 +387,8 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
      * Liczy się OUTPUT bitu, nie typ mikrofonu. Tylko freestyle z wczytanym bitem.
      */
     fun shouldAdviceHeadphonesForFreestyle(): Boolean {
-        if (_mode.value != RecordMode.Freestyle) return false
-        if (_selectedBeatUri.value == null) return false
+        if (mode.value != RecordMode.Freestyle) return false
+        if (selectedBeatUri.value == null) return false
         val outType =
             _selectedOutputDevice.value?.type
                 ?: BeatOutputDeviceRepository
@@ -442,7 +448,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun pushBeatFrame(rawFrame: FrameResult) {
-        val frame = applyBeatGainToFrame(rawFrame, _beatGain.value)
+        val frame = applyBeatGainToFrame(rawFrame, beatGain.value)
         processBeatVuAndPeak(frame.dbfs)
         val nowMs = SystemClock.elapsedRealtime()
         synchronized(waveformBufferLock) {
@@ -451,7 +457,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
                 beatWaveformBuffer.removeFirst()
             }
             if (lastBeatWaveListEmitMs < 0 || nowMs - lastBeatWaveListEmitMs >= WAVE_SNAPSHOT_INTERVAL_MS) {
-                _beatWaveform.value = beatWaveformBuffer.map { applyBeatGainToFrame(it, _beatGain.value) }
+                _beatWaveform.value = beatWaveformBuffer.map { applyBeatGainToFrame(it, beatGain.value) }
                 lastBeatWaveListEmitMs = nowMs
             }
         }
@@ -531,40 +537,14 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     fun confirmStartRecording() {
         viewModelScope.launch {
-            val prev = vocalRecorder.recordingState.value
-            if (prev is RecordingState.Saved) {
-                withContext(Dispatchers.IO) {
-                    runCatching { prev.file.delete() }
-                }
-                vocalRecorder.discardSavedToIdle()
-                savedTakePreviewPlayer.clear()
-            }
-
-            val freestyleWithBeat =
-                _mode.value == RecordMode.Freestyle && _selectedBeatUri.value != null
-            val outFile =
-                File(
-                    getApplication<Application>().filesDir,
-                    if (freestyleWithBeat) {
-                        "Spoticious_freestyle_${System.currentTimeMillis()}.wav"
-                    } else {
-                        "Spoticious_rec_${System.currentTimeMillis()}.wav"
-                    },
-                )
-
+            savedTakePreviewPlayer.clear()
             resetWaveformVisualization()
 
-            val mic = resolveRecordingDevice()
-
             val started =
-                withContext(Dispatchers.IO) {
-                    vocalRecorder.start(
-                        outputFile = outFile,
-                        sampleRate = SAMPLE_RATE_DEFAULT,
-                        bitDepth = BIT_DEPTH_DEFAULT,
-                        preferredDevice = mic,
-                    )
-                }
+                RecordingSession.startRecording(
+                    micDevice = resolveRecordingDevice(),
+                    beatOutputDevice = _selectedOutputDevice.value,
+                )
 
             if (!started) {
                 Toast.makeText(
@@ -575,77 +555,17 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
 
-            if (_mode.value == RecordMode.Freestyle) {
-                val beatUri = _selectedBeatUri.value
-                if (beatUri != null) {
-                    withContext(Dispatchers.Main) {
-                        beatPreviewPlayer.setPreferredOutputDevice(_selectedOutputDevice.value)
-                        beatPreviewPlayer.loadBeat(beatUri)
-                        beatPreviewPlayer.setVolume(_beatGain.value)
-                        beatPreviewPlayer.seekToStart()
-                        beatPreviewPlayer.play()
-                    }
-                    attachBeatVisualizerWhenRecording()
-                } else {
-                    withContext(Dispatchers.Main) {
-                        beatPreviewPlayer.releaseVisualizer()
-                    }
-                }
+            if (mode.value == RecordMode.Freestyle && selectedBeatUri.value != null) {
+                attachBeatVisualizerWhenRecording()
             } else {
-                withContext(Dispatchers.Main) {
-                    beatPreviewPlayer.releaseVisualizer()
-                }
+                beatPreviewPlayer.releaseVisualizer()
             }
         }
     }
 
     fun stopRecording() {
-        viewModelScope.launch {
-            val needsMix =
-                _mode.value == RecordMode.Freestyle && _selectedBeatUri.value != null
-            deferSavedPreviewLoad = needsMix
-
-            withContext(Dispatchers.Main) {
-                beatPreviewPlayer.stop()
-                beatPreviewPlayer.releaseVisualizer()
-            }
-
-            val app = getApplication<Application>()
-            val beatUri = _selectedBeatUri.value
-            try {
-                val vocalFile =
-                    withContext(Dispatchers.IO) {
-                        suspendCancellableCoroutine { cont ->
-                            vocalRecorder.stop { file -> cont.resume(file) }
-                        }
-                    }
-                if (vocalFile != null && needsMix && beatUri != null) {
-                    val mixed =
-                        withContext(Dispatchers.IO) {
-                            FreestyleMixdown.mixInPlace(
-                                context = app,
-                                vocalWav = vocalFile,
-                                beatUri = beatUri,
-                                targetSampleRate = SAMPLE_RATE_DEFAULT,
-                                beatGain = _beatGain.value,
-                            )
-                        }
-                    if (!mixed) {
-                        Toast.makeText(
-                            app,
-                            app.getString(R.string.record_freestyle_mix_failed),
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                    withContext(Dispatchers.Main) {
-                        savedTakePreviewPlayer.loadFile(vocalFile)
-                    }
-                }
-            } finally {
-                deferSavedPreviewLoad = false
-            }
-            resetWaveformVisualization()
-        }
+        RecordingSession.stopRecording()
+        resetWaveformVisualization()
     }
 
     fun saveRecordingToMusicWithBaseName(baseName: String) {
@@ -689,14 +609,8 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun deleteSavedRecording() {
-        viewModelScope.launch {
-            val st = vocalRecorder.recordingState.value as? RecordingState.Saved ?: return@launch
-            withContext(Dispatchers.IO) {
-                runCatching { st.file.delete() }
-            }
-            vocalRecorder.discardSavedToIdle()
-            savedTakePreviewPlayer.clear()
-        }
+        savedTakePreviewPlayer.clear()
+        RecordingSession.deleteSavedRecording()
     }
 
     private fun sanitizeRecordingBaseName(raw: String): String {

@@ -13,7 +13,7 @@ android {
         applicationId = "com.codestudio71.spoticious"
         minSdk = 24
         targetSdk = 36
-        versionCode = 4
+        versionCode = 5
         versionName = "2.0.0"
         resConfigs("pl") // Polski natywnie – tylko values/ (fallback PL)
 

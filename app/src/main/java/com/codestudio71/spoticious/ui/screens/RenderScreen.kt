@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -346,34 +347,47 @@ private fun RenderingContent(
     outputName: String,
     phase: String
 ) {
-    Text(stringResource(R.string.rendering), color = MiamiCyan, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-    Spacer(modifier = Modifier.height(12.dp))
-    LinearProgressIndicator(
-        progress = { progress },
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(8.dp),
-        color = MiamiCyan,
-        trackColor = Color.White.copy(alpha = 0.2f)
-    )
-    Spacer(modifier = Modifier.height(6.dp))
-    Text(
-        text = stringResource(R.string.render_wait_large_files),
-        color = GrayText,
-        fontSize = 12.sp,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth()
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    Text("${(progress * 100).toInt()}%", color = MiamiCyan, fontSize = 16.sp)
-    Text(
-        text = phase,
-        style = MaterialTheme.typography.bodySmall,
-        color = Color.White.copy(alpha = 0.55f),
-        textAlign = TextAlign.Center,
-        modifier = Modifier.padding(top = 4.dp)
-    )
-    Text(outputName, color = GrayText, fontSize = 12.sp)
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(stringResource(R.string.rendering), color = MiamiCyan, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(12.dp))
+        LinearProgressIndicator(
+            progress = { progress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp),
+            color = MiamiCyan,
+            trackColor = Color.White.copy(alpha = 0.2f)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "${(progress * 100).toInt()}% · $phase",
+            color = MiamiCyan,
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = outputName,
+            color = GrayText,
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.render_wait_large_files),
+            color = GrayText,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }
 
 @Composable

@@ -68,6 +68,12 @@
     <string name="record_headset_continue">Record anyway</string>
     <string name="record_switched_usb_mic">Switched to USB mic</string>
     <string name="record_freestyle_mix_failed">Could not mix beat with vocal. Saved vocal only.</string>
+    <string name="record_mic_signal_lost">Microphone signal lost — check mic permission and connection.</string>
+    <string name="record_mixing">Mixing beat with vocal…</string>
+    <string name="record_notif_channel_name">Recording</string>
+    <string name="record_notif_title">Recording in progress</string>
+    <string name="record_notif_text">Recording %1$s</string>
+    <string name="record_notif_stop">Stop</string>
     <string name="coming_soon">Coming soon</string>
     <string name="playlist">Playlist</string>
     <string name="playlist_queue">Playback queue</string>
@@ -156,6 +162,13 @@
     <string name="master_data_header_lufs_s">LUFS-S</string>
     <string name="master_data_header_lufs_i">LUFS-I</string>
     <string name="master_data_header_lra">LRA</string>
+    <string name="master_data_glossary_title">What do these numbers mean?</string>
+    <string name="master_data_glossary_peak">Peak — the loudest single moment in the track. 0.0 dB is the ceiling: anything above gets clipped (distorted).</string>
+    <string name="master_data_glossary_clips">Clips — how many times the signal hit the ceiling and got cut. 0 is clean; a high number means audible distortion.</string>
+    <string name="master_data_glossary_lufs_m">LUFS-M (Momentary) — loudness right now, measured over the last 0.4 s. Jumps around with the music.</string>
+    <string name="master_data_glossary_lufs_s">LUFS-S (Short-term) — loudness of the last 3 s. Smoother than Momentary.</string>
+    <string name="master_data_glossary_lufs_i">LUFS-I (Integrated) — average loudness of the whole track. This is the number streaming platforms look at: Spotify and YouTube normalize to about -14, Apple Music to about -16. Louder masters get turned down.</string>
+    <string name="master_data_glossary_lra">LRA — dynamic range in LU: the gap between quiet and loud parts. Low (2-5) = dense, compressed sound; high (8+) = big dynamic swings.</string>
     <string name="shuffle">Shuffle</string>
     <string name="previous">Previous</string>
     <string name="next">Next</string>

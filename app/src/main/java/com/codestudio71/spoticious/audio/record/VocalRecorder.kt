@@ -60,9 +60,17 @@ class VocalRecorder {
     private var bitsPerSample = 16
     private var captureSampleRate = 48_000
 
+    /** [SystemClock.elapsedRealtime] w momencie startu przechwytywania — do synchronizacji beatu w miksie. */
+    @Volatile
+    var captureStartElapsedMs: Long = 0L
+        private set
+
     @Volatile var onWaveformFrame: ((ShortArray, Int) -> Unit)? = null
 
     @Volatile var onWaveformFrame24: ((ByteArray, Int) -> Unit)? = null
+
+    /** Wywoływane (nie częściej niż co [MIC_SILENCE_TIMEOUT_MS]), gdy mikrofon przestał dostarczać dane. */
+    @Volatile var onMicSignalLost: (() -> Unit)? = null
 
     /** Mono PCM ([AudioFormat.CHANNEL_IN_MONO]); jedna aktywna sesja naraz i jedno [preferredDevice]. */
     fun start(
@@ -138,12 +146,15 @@ class VocalRecorder {
                     val buffer = ByteArray(bufSize)
                     val waveformShortReuse = ShortArray(bufSize / 2)
                     val started = SystemClock.elapsedRealtime()
+                    captureStartElapsedMs = started
+                    var lastDataAtMs = started
                     _state.value = RecordingState.Recording(0L, 0f)
                     while (active && isActive) {
                         val ar = audioRecord ?: break
                         val n = ar.read(buffer, 0, buffer.size)
                         when {
                             n > 0 -> {
+                                lastDataAtMs = SystemClock.elapsedRealtime()
                                 var peakWritten = 0f
                                 var durWritten = 0L
                                 synchronized(outRaf) {
@@ -184,7 +195,21 @@ class VocalRecorder {
 
                             n < 0 -> break
 
-                            else -> delay(5)
+                            else -> {
+                                // System może wyciszyć mikrofon (brak FGS / polityka OEM):
+                                // timer nie może zamarzać, a UI dostaje sygnał utraty sygnału.
+                                val nowMs = SystemClock.elapsedRealtime()
+                                _state.value =
+                                    RecordingState.Recording(
+                                        durationMs = nowMs - started,
+                                        peakAmplitude = 0f,
+                                    )
+                                if (nowMs - lastDataAtMs > MIC_SILENCE_TIMEOUT_MS) {
+                                    onMicSignalLost?.invoke()
+                                    lastDataAtMs = nowMs
+                                }
+                                delay(5)
+                            }
                         }
                     }
                 }
@@ -341,6 +366,8 @@ class VocalRecorder {
     }
 
     companion object {
+
+        private const val MIC_SILENCE_TIMEOUT_MS = 1_000L
 
         internal fun writeStdPcmWaveHeader(
             out: RandomAccessFile,
