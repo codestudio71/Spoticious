@@ -33,6 +33,66 @@ object PcmStreamDecoder {
         }
     }
 
+    /**
+     * Jak [decodeUriToMonoFloat], ale kończy dekod po zebraniu tyle próbek źródłowych,
+     * ile wystarczy do [maxSamples] po resamplingu — mniejszy peak RAM przy długich beatach.
+     */
+    fun decodeUriToMonoFloatLimited(
+        context: Context,
+        uri: Uri,
+        targetSampleRate: Int,
+        maxSamples: Int,
+    ): FloatArray? {
+        if (maxSamples <= 0) return FloatArray(0)
+        var session: DecodeSession? = null
+        return try {
+            session = openSession(context, uri) ?: return null
+            val dstRate = targetSampleRate.coerceAtLeast(1)
+            var srcRate = session.sampleRate
+            var channelCount = session.channelCount
+            val srcSamplesNeeded =
+                if (maxSamples <= 1) {
+                    1
+                } else {
+                    ((maxSamples - 1L) * srcRate / dstRate).toInt() + 2
+                }
+            val monoSrc = FloatArray(srcSamplesNeeded)
+            var monoCount = 0
+
+            session.decodeStreaming(
+                shouldStop = { monoCount >= srcSamplesNeeded },
+                onChunk = { chunk, _, channels, rate, pcmEncoding ->
+                    if (monoCount >= srcSamplesNeeded) return@decodeStreaming
+                    srcRate = rate
+                    channelCount = channels.coerceAtLeast(1)
+                    val bps = bytesPerSample(pcmEncoding)
+                    val frames = chunk.size / bps / channelCount
+                    if (frames <= 0) return@decodeStreaming
+
+                    var byteIndex = 0
+                    var frameIndex = 0
+                    while (frameIndex < frames && monoCount < srcSamplesNeeded) {
+                        var mono = 0f
+                        for (ch in 0 until channelCount) {
+                            mono += readSampleFloat(chunk, byteIndex, pcmEncoding)
+                            byteIndex += bps
+                        }
+                        monoSrc[monoCount++] = mono / channelCount
+                        frameIndex++
+                    }
+                },
+            )
+
+            if (monoCount <= 0) return null
+            val resampled = resampleMono(monoSrc.copyOf(monoCount), srcRate, dstRate)
+            if (resampled.size <= maxSamples) resampled else resampled.copyOf(maxSamples)
+        } catch (_: Exception) {
+            null
+        } finally {
+            session?.release()
+        }
+    }
+
     fun extractPeaks(
         context: Context,
         uri: Uri,

@@ -66,23 +66,31 @@ object MasterDataAnalyzer {
         }
     }
 
+    private fun isClipsUnreliableMime(mime: String): Boolean {
+        val lower = mime.lowercase()
+        return lower.contains("opus") || lower.contains("vorbis") || lower.contains("webm")
+    }
+
     /** Compute MasterData from block loudness list (~1KB per minute, not 46MB) */
     private fun computeMasterDataFromBlocks(
         blockLoudnessList: List<Double>,
         peakSample: Float,
-        clipCount: Int
+        clipCount: Int,
+        clipsReliable: Boolean = true,
     ): MasterData {
         val peakDb = if (peakSample > 0f) 20.0 * log10(peakSample.toDouble()) else -100.0
 
         if (blockLoudnessList.isEmpty()) return MasterData(
             peakDb = peakDb, clips = clipCount,
-            maxLufsM = -100.0, maxLufsS = -100.0, lufsI = -100.0, lra = 0.0
+            maxLufsM = -100.0, maxLufsS = -100.0, lufsI = -100.0, lra = 0.0,
+            clipsReliable = clipsReliable,
         )
 
         val gated1 = blockLoudnessList.filter { it > ABSOLUTE_GATE_LUFS }
         if (gated1.isEmpty()) return MasterData(
             peakDb = peakDb, clips = clipCount,
-            maxLufsM = -100.0, maxLufsS = -100.0, lufsI = -100.0, lra = 0.0
+            maxLufsM = -100.0, maxLufsS = -100.0, lufsI = -100.0, lra = 0.0,
+            clipsReliable = clipsReliable,
         )
 
         val energyAvg1 = gated1.map { 10.0.pow((it + 0.691) / 10.0) }.average()
@@ -136,7 +144,8 @@ object MasterDataAnalyzer {
 
         return MasterData(
             peakDb = peakDb, clips = clipCount,
-            maxLufsM = maxLufsM, maxLufsS = maxLufsS, lufsI = lufsI, lra = lra
+            maxLufsM = maxLufsM, maxLufsS = maxLufsS, lufsI = lufsI, lra = lra,
+            clipsReliable = clipsReliable,
         )
     }
 
@@ -467,6 +476,7 @@ object MasterDataAnalyzer {
             extractor.selectTrack(trackIndex)
             val format = extractor.getTrackFormat(trackIndex)
             val mime = format.getString(MediaFormat.KEY_MIME) ?: return null
+            val clipsReliable = !isClipsUnreliableMime(mime)
 
             val trackDurationUs = try { format.getLong(MediaFormat.KEY_DURATION) } catch (_: Exception) { 0L }
 
@@ -600,7 +610,7 @@ object MasterDataAnalyzer {
             }
 
             val (blocks, peak, clips) = processor.finish()
-            computeMasterDataFromBlocks(blocks, peak, clips)
+            computeMasterDataFromBlocks(blocks, peak, clips, clipsReliable = clipsReliable)
         } catch (e: OutOfMemoryError) {
             Log.e(TAG, "decodeWithMediaCodecStreaming: OOM")
             null

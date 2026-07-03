@@ -144,7 +144,7 @@ class PlaybackService : Service() {
         val stopCustomAction = PlaybackStateCompat.CustomAction.Builder(
             CUSTOM_ACTION_STOP,
             getString(R.string.notif_action_stop),
-            android.R.drawable.ic_delete
+            R.drawable.ic_notif_stop
         ).build()
 
         val playbackState = PlaybackStateCompat.Builder()
@@ -221,19 +221,19 @@ class PlaybackService : Service() {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(if (isPlaying) getString(R.string.notif_playing) else getString(R.string.notif_paused))
-            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setSmallIcon(R.drawable.ic_notif_play)
             .setOngoing(true)
             .setContentIntent(openPendingIntent)
             .setDeleteIntent(deleteIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .addAction(android.R.drawable.ic_media_previous, getString(R.string.notif_action_previous), prevIntent)
+            .addAction(R.drawable.ic_notif_prev, getString(R.string.notif_action_previous), prevIntent)
             .addAction(
-                if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
+                if (isPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play,
                 if (isPlaying) getString(R.string.notif_action_pause) else getString(R.string.notif_action_play),
                 playPausePendingIntent
             )
-            .addAction(android.R.drawable.ic_media_next, getString(R.string.notif_action_next), nextIntent)
-            .addAction(android.R.drawable.ic_delete, getString(R.string.notif_action_stop), stopPendingIntent)
+            .addAction(R.drawable.ic_notif_next, getString(R.string.notif_action_next), nextIntent)
+            .addAction(R.drawable.ic_notif_stop, getString(R.string.notif_action_stop), stopPendingIntent)
 
         if (sessionToken != null) {
             // MediaStyle allows at most 3 actions in compact view — with 4 addActions,

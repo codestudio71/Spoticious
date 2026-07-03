@@ -147,6 +147,7 @@ class VocalRecorder {
                     val waveformShortReuse = ShortArray(bufSize / 2)
                     val started = SystemClock.elapsedRealtime()
                     captureStartElapsedMs = started
+                    var lastHeaderFlushAtMs = started
                     var lastDataAtMs = started
                     _state.value = RecordingState.Recording(0L, 0f)
                     while (active && isActive) {
@@ -167,6 +168,21 @@ class VocalRecorder {
                                             durationMs = durWritten,
                                             peakAmplitude = peakWritten,
                                         )
+                                    val nowMs = SystemClock.elapsedRealtime()
+                                    if (nowMs - lastHeaderFlushAtMs >= HEADER_FLUSH_INTERVAL_MS) {
+                                        val pcmLen = max(0L, outRaf.length() - WAV_HEADER_SIZE)
+                                        outRaf.seek(0)
+                                        writeStdPcmWaveHeader(
+                                            outRaf,
+                                            captureSampleRate,
+                                            bitsPerSample,
+                                            1,
+                                            pcmLen,
+                                        )
+                                        outRaf.seek(outRaf.length())
+                                        outRaf.fd.sync()
+                                        lastHeaderFlushAtMs = nowMs
+                                    }
                                 }
                                 when (bitsPerSample) {
                                     24 -> {
@@ -368,6 +384,8 @@ class VocalRecorder {
     companion object {
 
         private const val MIC_SILENCE_TIMEOUT_MS = 1_000L
+
+        private const val HEADER_FLUSH_INTERVAL_MS = 3_000L
 
         internal fun writeStdPcmWaveHeader(
             out: RandomAccessFile,

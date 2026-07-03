@@ -1,8 +1,12 @@
 package com.codestudio71.spoticious.audio.record
 
 import android.content.Context
+import android.media.AudioAttributes
 import android.media.AudioDeviceInfo
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.net.Uri
+import android.os.Build
 import android.os.SystemClock
 import android.widget.Toast
 import com.codestudio71.spoticious.R
@@ -64,6 +68,8 @@ object RecordingSession {
     /** O ile ms beat wystartował później niż mikrofon — kompensowane w miksie. */
     @Volatile
     private var beatStartOffsetMs = 0L
+
+    private var recordingAudioFocusRequest: AudioFocusRequest? = null
 
     init {
         scope.launch {
@@ -151,6 +157,8 @@ object RecordingSession {
             return false
         }
 
+        requestRecordingAudioFocus()
+
         beatStartOffsetMs = 0L
         if (freestyleWithBeat) {
             val beatUri = _selectedBeatUri.value
@@ -187,6 +195,8 @@ object RecordingSession {
      */
     fun stopRecording() {
         scope.launch {
+            releaseRecordingAudioFocus()
+
             val needsMix =
                 _mode.value == RecordMode.Freestyle && _selectedBeatUri.value != null
             val beatUri = _selectedBeatUri.value
@@ -235,6 +245,42 @@ object RecordingSession {
                 runCatching { st.file.delete() }
             }
             vocalRecorder.discardSavedToIdle()
+        }
+    }
+
+    private fun requestRecordingAudioFocus() {
+        val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val request =
+                AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .build(),
+                    )
+                    .setOnAudioFocusChangeListener { }
+                    .build()
+            recordingAudioFocusRequest = request
+            audioManager.requestAudioFocus(request)
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.requestAudioFocus(
+                null,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN,
+            )
+        }
+    }
+
+    private fun releaseRecordingAudioFocus() {
+        val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            recordingAudioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+            recordingAudioFocusRequest = null
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.abandonAudioFocus(null)
         }
     }
 }

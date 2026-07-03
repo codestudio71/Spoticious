@@ -169,6 +169,7 @@
     <string name="master_data_glossary_lufs_s">LUFS-S (Short-term) — głośność ostatnich 3 s. Spokojniejszy niż Momentary.</string>
     <string name="master_data_glossary_lufs_i">LUFS-I (Integrated) — średnia głośność całego utworu. Na tę liczbę patrzą platformy streamingowe: Spotify i YouTube normalizują do ok. -14, Apple Music do ok. -16. Głośniejsze mastery są ściszane.</string>
     <string name="master_data_glossary_lra">LRA — rozpiętość dynamiki w LU: różnica między cichymi i głośnymi fragmentami. Mało (2-5) = gęsto, mocno skompresowane; dużo (8+) = duże wahania dynamiki.</string>
+    <string name="master_data_clips_unavailable">* Wykrywanie clipów niedostępne dla tego formatu (Opus/WebM).</string>
     <string name="shuffle">Losowo</string>
     <string name="previous">Poprzedni</string>
     <string name="next">Następny</string>

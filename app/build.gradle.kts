@@ -15,9 +15,12 @@ android {
         targetSdk = 36
         versionCode = 5
         versionName = "2.0.0"
-        resConfigs("pl") // Polski natywnie – tylko values/ (fallback PL)
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    androidResources {
+        localeFilters += "pl"
     }
 
     buildTypes {

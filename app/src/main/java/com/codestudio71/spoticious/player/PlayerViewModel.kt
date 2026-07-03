@@ -36,7 +36,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import java.util.Locale
@@ -145,12 +144,12 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         PlaybackService.ensureStarted(application)
-        runBlocking(Dispatchers.IO) {
-            hydrateEqStateFromDataStore()
-            loadEqPresetsFromDataStore()
-            _repeatMode.value = loadRepeatModeFromDataStore()
-        }
         viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                hydrateEqStateFromDataStore()
+                loadEqPresetsFromDataStore()
+                _repeatMode.value = loadRepeatModeFromDataStore()
+            }
             while (PlaybackService.player == null) delay(50)
             PlaybackService.onSkipToNextCallback = { skipToNext() }
             PlaybackService.onSkipToPreviousCallback = { skipToPrevious() }

@@ -10,7 +10,6 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import androidx.core.app.ServiceCompat
 import com.codestudio71.spoticious.MainActivity
 import com.codestudio71.spoticious.R
 import java.util.Locale
@@ -42,16 +41,22 @@ class RecordingService : Service() {
 
     private fun startInForeground() {
         val notification = buildNotification(0L)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ServiceCompat.startForeground(
-                this,
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
+        when {
+            // FOREGROUND_SERVICE_TYPE_MICROPHONE istnieje od API 30 (Android 11).
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+                )
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ->
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+                )
+            else -> startForeground(NOTIFICATION_ID, notification)
         }
     }
 
@@ -145,13 +150,13 @@ class RecordingService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.record_notif_title))
             .setContentText(getString(R.string.record_notif_text, timer))
-            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setSmallIcon(R.drawable.ic_notif_mic)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(openPendingIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .addAction(
-                android.R.drawable.ic_media_pause,
+                R.drawable.ic_notif_stop,
                 getString(R.string.record_notif_stop),
                 stopPendingIntent,
             )

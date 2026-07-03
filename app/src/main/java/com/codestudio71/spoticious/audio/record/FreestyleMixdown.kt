@@ -7,6 +7,7 @@ import java.io.File
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /** Miks wokal + bit po STOP (freestyle); beat dekodowany z URI, nie z mikrofonu. */
@@ -16,6 +17,7 @@ object FreestyleMixdown {
     const val BEAT_GAIN = 0.7f
 
     private const val WAV_HEADER_SIZE = 44
+    private const val CHUNK_PCM_BYTES = 1_048_576
 
     /**
      * Nadpisuje [vocalWav] zmiksowanym mono PCM WAV (ten sam sample rate co nagranie).
@@ -31,55 +33,105 @@ object FreestyleMixdown {
         beatGain: Float = BEAT_GAIN,
         beatStartOffsetMs: Long = 0L,
     ): Boolean {
-        val vocal = readMonoPcmWav(vocalWav) ?: return false
-        if (vocal.samples.isEmpty()) return false
+        val info = readWavPcmInfo(vocalWav) ?: return false
+        if (info.frameCount <= 0) return false
 
-        val rate = vocal.sampleRate.coerceAtLeast(1)
-        val beatMono =
-            PcmStreamDecoder.decodeUriToMonoFloat(context, beatUri, rate)
-                ?: return false
-
+        val rate = info.sampleRate.coerceAtLeast(1)
         val beatOffsetSamples =
             (beatStartOffsetMs.coerceAtLeast(0L) * rate / 1000L)
-                .coerceAtMost(vocal.samples.size.toLong())
+                .coerceAtMost(info.frameCount.toLong())
                 .toInt()
+        val maxBeatSamples = (info.frameCount - beatOffsetSamples).coerceAtLeast(0)
 
-        val mixed =
-            mixMonoFloat(
-                vocalSamples = vocal.samples,
-                beatSamples = beatMono,
-                vocalGain = VOCAL_GAIN,
-                beatGain = beatGain.coerceIn(0f, 1f),
-                beatOffsetSamples = beatOffsetSamples,
-            )
+        val beatMono =
+            if (maxBeatSamples > 0) {
+                PcmStreamDecoder.decodeUriToMonoFloatLimited(
+                    context = context,
+                    uri = beatUri,
+                    targetSampleRate = rate,
+                    maxSamples = maxBeatSamples,
+                ) ?: return false
+            } else {
+                FloatArray(0)
+            }
 
-        return writeMonoPcmWav(vocalWav, mixed, rate, vocal.bitsPerSample)
+        val temp = File(vocalWav.path + ".mix")
+        val gain = beatGain.coerceIn(0f, 1f)
+        val bps = if (info.bitsPerSample == 24) 24 else 16
+
+        return try {
+            RandomAccessFile(temp, "rw").use { outRaf ->
+                outRaf.write(ByteArray(WAV_HEADER_SIZE))
+                var globalFrame = 0
+
+                RandomAccessFile(vocalWav, "r").use { inRaf ->
+                    inRaf.seek(info.dataOffset.toLong())
+                    var bytesRemaining = info.dataSize
+                    val readBuf = ByteArray(min(CHUNK_PCM_BYTES, info.dataSize.coerceAtLeast(1)))
+
+                    while (bytesRemaining > 0) {
+                        val toRead = min(readBuf.size, bytesRemaining)
+                        inRaf.readFully(readBuf, 0, toRead)
+                        val framesInChunk = toRead / info.bytesPerFrame
+                        if (framesInChunk <= 0) break
+
+                        val vocalMono =
+                            pcmBytesToMonoFloat(
+                                pcmBytes = readBuf,
+                                frameCount = framesInChunk,
+                                channels = info.channels,
+                                bitsPerSample = info.bitsPerSample,
+                            )
+                        val mixedBytes =
+                            mixAndEncodeChunk(
+                                vocalMono = vocalMono,
+                                globalFrameStart = globalFrame,
+                                beatMono = beatMono,
+                                beatOffsetSamples = beatOffsetSamples,
+                                beatGain = gain,
+                                bitsPerSample = bps,
+                            )
+                        outRaf.write(mixedBytes)
+                        globalFrame += framesInChunk
+                        bytesRemaining -= toRead
+                    }
+                }
+
+                val pcmLen = (outRaf.length() - WAV_HEADER_SIZE).coerceAtLeast(0L)
+                if (pcmLen <= 0L) {
+                    temp.delete()
+                    return false
+                }
+                outRaf.seek(0)
+                VocalRecorder.writeStdPcmWaveHeader(outRaf, rate, bps, 1, pcmLen)
+            }
+
+            if (!vocalWav.delete()) {
+                temp.delete()
+                return false
+            }
+            if (!temp.renameTo(vocalWav)) {
+                temp.delete()
+                return false
+            }
+            true
+        } catch (_: Exception) {
+            temp.delete()
+            false
+        }
     }
 
-    private data class MonoPcm(
-        val samples: FloatArray,
+    private data class WavPcmInfo(
         val sampleRate: Int,
         val bitsPerSample: Int,
+        val channels: Int,
+        val dataOffset: Int,
+        val dataSize: Int,
+        val frameCount: Int,
+        val bytesPerFrame: Int,
     )
 
-    private fun mixMonoFloat(
-        vocalSamples: FloatArray,
-        beatSamples: FloatArray,
-        vocalGain: Float,
-        beatGain: Float,
-        beatOffsetSamples: Int = 0,
-    ): FloatArray {
-        val out = FloatArray(vocalSamples.size)
-        for (i in vocalSamples.indices) {
-            val v = vocalSamples[i] * vocalGain
-            val bi = i - beatOffsetSamples
-            val b = if (bi in beatSamples.indices) beatSamples[bi] * beatGain else 0f
-            out[i] = (v + b).coerceIn(-1f, 1f)
-        }
-        return out
-    }
-
-    private fun readMonoPcmWav(file: File): MonoPcm? {
+    private fun readWavPcmInfo(file: File): WavPcmInfo? {
         return try {
             RandomAccessFile(file, "r").use { raf ->
                 if (raf.length() < WAV_HEADER_SIZE + 2) return null
@@ -105,75 +157,82 @@ object FreestyleMixdown {
                 val frameCount = dataSize / bytesPerFrame
                 if (frameCount <= 0) return null
 
-                val pcmBytes = ByteArray(dataSize.coerceAtMost(raf.length().toInt() - WAV_HEADER_SIZE))
-                raf.readFully(pcmBytes)
-
-                val mono = FloatArray(frameCount)
-                when (bitsPerSample) {
-                    16 -> {
-                        var fi = 0
-                        for (f in 0 until frameCount) {
-                            var sum = 0f
-                            for (ch in 0 until channels) {
-                                val lo = pcmBytes[fi].toInt() and 0xff
-                                val hi = pcmBytes[fi + 1].toInt()
-                                sum += ((hi shl 8) or lo) / 32768f
-                                fi += 2
-                            }
-                            mono[f] = sum / channels
-                        }
-                    }
-
-                    24 -> {
-                        var fi = 0
-                        for (f in 0 until frameCount) {
-                            var sum = 0f
-                            for (ch in 0 until channels) {
-                                val b0 = pcmBytes[fi].toInt() and 0xff
-                                val b1 = pcmBytes[fi + 1].toInt() and 0xff
-                                val b2 = pcmBytes[fi + 2].toInt()
-                                val s = b0 or (b1 shl 8) or (b2 shl 16)
-                                val v = (s shl 8) shr 8
-                                sum += v / 8_388_608f
-                                fi += 3
-                            }
-                            mono[f] = sum / channels
-                        }
-                    }
-
-                    else -> return null
-                }
-                MonoPcm(mono, sampleRate, bitsPerSample)
+                WavPcmInfo(
+                    sampleRate = sampleRate,
+                    bitsPerSample = bitsPerSample,
+                    channels = channels,
+                    dataOffset = WAV_HEADER_SIZE,
+                    dataSize = dataSize.coerceAtMost((raf.length() - WAV_HEADER_SIZE).toInt()),
+                    frameCount = frameCount,
+                    bytesPerFrame = bytesPerFrame,
+                )
             }
         } catch (_: Exception) {
             null
         }
     }
 
-    private fun writeMonoPcmWav(
-        file: File,
-        samples: FloatArray,
-        sampleRate: Int,
+    private fun pcmBytesToMonoFloat(
+        pcmBytes: ByteArray,
+        frameCount: Int,
+        channels: Int,
         bitsPerSample: Int,
-    ): Boolean {
-        val bps = if (bitsPerSample == 24) 24 else 16
-        return try {
-            val pcmBytes =
-                when (bps) {
-                    24 -> encode24(samples)
-                    else -> encode16(samples)
+    ): FloatArray {
+        val mono = FloatArray(frameCount)
+        when (bitsPerSample) {
+            16 -> {
+                var fi = 0
+                for (f in 0 until frameCount) {
+                    var sum = 0f
+                    for (ch in 0 until channels) {
+                        val lo = pcmBytes[fi].toInt() and 0xff
+                        val hi = pcmBytes[fi + 1].toInt()
+                        sum += ((hi shl 8) or lo) / 32768f
+                        fi += 2
+                    }
+                    mono[f] = sum / channels
                 }
-            RandomAccessFile(file, "rw").use { raf ->
-                raf.setLength(0)
-                raf.seek(0)
-                raf.write(ByteArray(WAV_HEADER_SIZE))
-                raf.write(pcmBytes)
-                raf.seek(0)
-                VocalRecorder.writeStdPcmWaveHeader(raf, sampleRate, bps, 1, pcmBytes.size.toLong())
             }
-            true
-        } catch (_: Exception) {
-            false
+
+            24 -> {
+                var fi = 0
+                for (f in 0 until frameCount) {
+                    var sum = 0f
+                    for (ch in 0 until channels) {
+                        val b0 = pcmBytes[fi].toInt() and 0xff
+                        val b1 = pcmBytes[fi + 1].toInt() and 0xff
+                        val b2 = pcmBytes[fi + 2].toInt()
+                        val s = b0 or (b1 shl 8) or (b2 shl 16)
+                        val v = (s shl 8) shr 8
+                        sum += v / 8_388_608f
+                        fi += 3
+                    }
+                    mono[f] = sum / channels
+                }
+            }
+        }
+        return mono
+    }
+
+    private fun mixAndEncodeChunk(
+        vocalMono: FloatArray,
+        globalFrameStart: Int,
+        beatMono: FloatArray,
+        beatOffsetSamples: Int,
+        beatGain: Float,
+        bitsPerSample: Int,
+    ): ByteArray {
+        val mixed = FloatArray(vocalMono.size)
+        for (j in vocalMono.indices) {
+            val i = globalFrameStart + j
+            val v = vocalMono[j] * VOCAL_GAIN
+            val bi = i - beatOffsetSamples
+            val b = if (bi in beatMono.indices) beatMono[bi] * beatGain else 0f
+            mixed[j] = (v + b).coerceIn(-1f, 1f)
+        }
+        return when (bitsPerSample) {
+            24 -> encode24(mixed)
+            else -> encode16(mixed)
         }
     }
 

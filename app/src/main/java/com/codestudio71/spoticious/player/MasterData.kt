@@ -7,6 +7,7 @@ data class MasterData(
     val maxLufsS: Double,
     val lufsI: Double,
     val lra: Double,
+    val clipsReliable: Boolean = true,
 ) {
     companion object {
         /** WebM/Opus — kolumna Clips pokazuje „—”, nie licznik. */
@@ -20,6 +21,7 @@ data class MasterData(
                 maxLufsS = Double.NaN,
                 lufsI = Double.NaN,
                 lra = Double.NaN,
+                clipsReliable = false,
             )
     }
 
@@ -30,8 +32,9 @@ data class MasterData(
     fun formatPeak(): String = fmtDb(peakDb)
 
     fun formatClips(): String =
-        when (clips) {
-            CLIPS_UNSUPPORTED -> "—"
+        when {
+            !clipsReliable -> "*"
+            clips == CLIPS_UNSUPPORTED -> "—"
             else -> clips.toString()
         }
     fun formatLufsM(): String = fmtLufs(maxLufsM)

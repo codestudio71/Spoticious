@@ -169,6 +169,7 @@
     <string name="master_data_glossary_lufs_s">LUFS-S (Short-term) — loudness of the last 3 s. Smoother than Momentary.</string>
     <string name="master_data_glossary_lufs_i">LUFS-I (Integrated) — average loudness of the whole track. This is the number streaming platforms look at: Spotify and YouTube normalize to about -14, Apple Music to about -16. Louder masters get turned down.</string>
     <string name="master_data_glossary_lra">LRA — dynamic range in LU: the gap between quiet and loud parts. Low (2-5) = dense, compressed sound; high (8+) = big dynamic swings.</string>
+    <string name="master_data_clips_unavailable">* Clip detection is not available for this format (Opus/WebM).</string>
     <string name="shuffle">Shuffle</string>
     <string name="previous">Previous</string>
     <string name="next">Next</string>

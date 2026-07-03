@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -368,7 +369,7 @@ fun FullPlayerScreen(
                         modifier = Modifier.padding(2.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Timer,
+                            imageVector = Icons.Filled.Timer,
                             contentDescription = stringResource(R.string.sleep_timer),
                             tint = if (sleepTimerRemaining != null) MiamiCyan else Color.White.copy(alpha = 0.6f),
                             modifier = Modifier.size(24.dp)
@@ -667,7 +668,8 @@ private fun MasterDataTable(md: com.codestudio71.spoticious.player.MasterData) {
         else -> Color.White
     }
 
-    fun clipsColor(clips: Int) = if (clips > 0) Color(0xFFE53935) else Color.White
+    fun clipsColor(clips: Int, reliable: Boolean) =
+        if (!reliable) Color.White else if (clips > 0) Color(0xFFE53935) else Color.White
 
     fun lufsIColor(lufsI: Double) = if (lufsI in -16.0..-9.0) Color(0xFF4CAF50) else Color.White
 
@@ -675,7 +677,7 @@ private fun MasterDataTable(md: com.codestudio71.spoticious.player.MasterData) {
 
     val valueColors = listOf(
         peakColor(md.peakDb),
-        clipsColor(md.clips),
+        clipsColor(md.clips, md.clipsReliable),
         Color.White,
         Color.White,
         lufsIColor(md.lufsI),
@@ -726,6 +728,16 @@ private fun MasterDataTable(md: com.codestudio71.spoticious.player.MasterData) {
                     modifier = Modifier.weight(1f)
                 )
             }
+        }
+        if (!md.clipsReliable) {
+            Text(
+                text = stringResource(R.string.master_data_clips_unavailable),
+                color = Color.Gray,
+                fontSize = 11.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+            )
         }
     }
 }
