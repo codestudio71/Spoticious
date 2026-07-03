@@ -2,7 +2,6 @@ package com.codestudio71.spoticious.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -78,38 +77,22 @@ fun RenderScreen(
                 buttonsEnabled = true
             )
             is RenderState.ShowAacDialog -> {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    IdleContent(
-                        selectedUri = selectedUri,
-                        onExportAac = {},
-                        onExportWav = {},
-                        buttonsEnabled = false
-                    )
-                    AacDialog(
-                        defaultName = s.defaultName,
-                        aacSampleRate = s.aacSampleRate,
-                        onAacSampleRateChange = { viewModel.onAacSampleRateSelected(it) },
-                        onDismiss = { viewModel.resetToIdle() },
-                        onRender = { name, aacSr -> viewModel.startRender(name, OutputFormat.AAC, aacSampleRate = aacSr) }
-                    )
-                }
+                AacDialog(
+                    defaultName = s.defaultName,
+                    aacSampleRate = s.aacSampleRate,
+                    onAacSampleRateChange = { viewModel.onAacSampleRateSelected(it) },
+                    onDismiss = { viewModel.resetToIdle() },
+                    onRender = { name, aacSr -> viewModel.startRender(name, OutputFormat.AAC, aacSampleRate = aacSr) },
+                )
             }
             is RenderState.ShowWavDialog -> {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    IdleContent(
-                        selectedUri = selectedUri,
-                        onExportAac = {},
-                        onExportWav = {},
-                        buttonsEnabled = false
-                    )
-                    WavDialog(
+                WavDialog(
                     defaultName = s.defaultName,
                     sampleRate = s.sampleRate,
                     onSampleRateChange = { viewModel.onWavSampleRateSelected(it) },
                     onDismiss = { viewModel.resetToIdle() },
-                    onRender = { name, sr -> viewModel.startRender(name, OutputFormat.WAV, sr) }
+                    onRender = { name, sr -> viewModel.startRender(name, OutputFormat.WAV, sr) },
                 )
-                }
             }
             is RenderState.Rendering -> RenderingContent(
                 progress = s.progress,
@@ -141,13 +124,18 @@ private fun IdleContent(
         text = stringResource(R.string.export_with_eq),
         color = Color.White,
         fontSize = 20.sp,
-        fontWeight = FontWeight.Bold
+        fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth(),
     )
     Spacer(modifier = Modifier.height(8.dp))
     Text(
         text = if (selectedUri != null) stringResource(R.string.current_track_with_eq) else stringResource(R.string.select_track_in_tracks),
         color = GrayText,
-        fontSize = 14.sp
+        fontSize = 14.sp,
+        textAlign = TextAlign.Center,
+        lineHeight = 20.sp,
+        modifier = Modifier.fillMaxWidth(),
     )
     Spacer(modifier = Modifier.height(24.dp))
     Button(
