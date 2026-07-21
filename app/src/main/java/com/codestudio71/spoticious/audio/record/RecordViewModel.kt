@@ -473,15 +473,16 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
-    private fun estimateBeatOutputDbfs(gain: Float): Float {
-        val g = gain.coerceIn(0f, 1f)
+    private fun estimateBeatOutputDbfs(slider: Float): Float {
+        val g = FreestyleMixdown.sliderToLinearGain(slider)
         if (g <= 0f) return -60f
         val gainDb = (20.0 * log10(g.toDouble())).toFloat()
         return (_beatRefPeakDbfs.value + gainDb).coerceIn(-60f, 0f)
     }
 
-    private fun publishBeatLevelFromGain(gain: Float) {
-        val level = estimateBeatOutputDbfs(gain)
+    private fun publishBeatLevelFromGain(slider: Float) {
+        val linear = FreestyleMixdown.sliderToLinearGain(slider)
+        val level = estimateBeatOutputDbfs(slider)
         smoothedBeatDb = level
         _beatDbfs.value = level
         if (level >= beatPeakDisplayDb) {
@@ -497,7 +498,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         _beatPeakDbfs.value = beatPeakDisplayDb.coerceIn(-60f, 0f)
         synchronized(waveformBufferLock) {
             if (beatWaveformBuffer.isNotEmpty()) {
-                _beatWaveform.value = beatWaveformBuffer.map { applyBeatGainToFrame(it, gain) }
+                _beatWaveform.value = beatWaveformBuffer.map { applyBeatGainToFrame(it, linear) }
             }
         }
     }

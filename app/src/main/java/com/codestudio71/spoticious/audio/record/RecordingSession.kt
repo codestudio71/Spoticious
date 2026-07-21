@@ -95,7 +95,7 @@ object RecordingSession {
         _selectedBeatUri.value = uri
         beatPreviewPlayer.setPreferredOutputDevice(outputDevice)
         beatPreviewPlayer.loadBeat(uri)
-        beatPreviewPlayer.setVolume(_beatGain.value)
+        beatPreviewPlayer.setVolume(FreestyleMixdown.sliderToLinearGain(_beatGain.value))
         beatPreviewPlayer.seekToStart()
         beatPreviewPlayer.pause()
     }
@@ -105,18 +105,18 @@ object RecordingSession {
         beatPreviewPlayer.clear()
     }
 
-    /** Ten sam gain w stanie (UI/mix). [applyToPlayer]=false przy drag suwaka — bez trzasków Exo. */
+    /** Suwak 0..1 w stanie (UI %). Na player/mix: [FreestyleMixdown.sliderToLinearGain]. */
     fun setBeatGain(value: Float, applyToPlayer: Boolean = true) {
         val g = value.coerceIn(0f, 1f)
         _beatGain.value = g
         if (applyToPlayer) {
-            beatPreviewPlayer.setVolume(g)
+            beatPreviewPlayer.setVolume(FreestyleMixdown.sliderToLinearGain(g))
         }
     }
 
     /** Po puszczeniu suwaka — jednorazowe [ExoPlayer.setVolume]. */
     fun applyBeatGainToPlayer() {
-        beatPreviewPlayer.setVolume(_beatGain.value)
+        beatPreviewPlayer.setVolume(FreestyleMixdown.sliderToLinearGain(_beatGain.value))
     }
 
     /**
@@ -174,7 +174,7 @@ object RecordingSession {
                 if (!beatPreviewPlayer.isLoaded(beatUri)) {
                     beatPreviewPlayer.loadBeat(beatUri)
                 }
-                beatPreviewPlayer.setVolume(_beatGain.value)
+                beatPreviewPlayer.setVolume(FreestyleMixdown.sliderToLinearGain(_beatGain.value))
                 // Mik: czekaj aż pętla AudioRecord ustawi captureStart (race bez tego → offset=0).
                 withTimeoutOrNull(2_000L) {
                     while (vocalRecorder.captureStartElapsedMs <= 0L) {
@@ -239,7 +239,7 @@ object RecordingSession {
                                 vocalWav = vocalFile,
                                 beatUri = beatUri,
                                 targetSampleRate = SAMPLE_RATE_DEFAULT,
-                                beatGain = _beatGain.value,
+                                beatGain = FreestyleMixdown.sliderToLinearGain(_beatGain.value),
                                 beatStartOffsetMs = beatStartOffsetMs,
                             )
                         }

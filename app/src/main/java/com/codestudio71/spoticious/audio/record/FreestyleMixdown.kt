@@ -14,7 +14,28 @@ import kotlin.math.roundToInt
 object FreestyleMixdown {
 
     const val VOCAL_GAIN = 0.9f
+    /**
+     * Domyślna pozycja suwaka BEAT (0..1). Realny gain = [sliderToLinearGain]
+     * (krzywa pod freestyle — mic dyktafonu rzadko wychodzi powyżej ok. −18 dBFS).
+     */
     const val BEAT_GAIN = 0.55f
+
+    /**
+     * Sufit liniowy przy 100% suwaka — bit nigdy nie idzie na full peak pliku
+     * (to by zjadło wokal z telefonu).
+     */
+    private const val BEAT_GAIN_MAX_LINEAR = 0.4f
+
+    /**
+     * Suwak UI 0..1 → liniowy gain do ExoPlayer / miksu.
+     * - 0% → 0 → meter −60
+     * - 50% → 0.10 ≈ −20 dB względem peaku pliku
+     * - 100% → 0.40 ≈ −8 dB względem peaku (nie 0 dBFS)
+     */
+    fun sliderToLinearGain(slider: Float): Float {
+        val s = slider.coerceIn(0f, 1f)
+        return s * s * BEAT_GAIN_MAX_LINEAR
+    }
 
     /** Próg poniżej którego suma idzie 1:1; powyżej — miękkie ograniczanie (bez twardego clipu). */
     private const val SOFT_LIMIT_THRESHOLD = 0.92f
