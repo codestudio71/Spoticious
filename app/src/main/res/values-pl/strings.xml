@@ -252,6 +252,15 @@
     <string name="eq_preset_error_limit">Limit presetów osiągnięty — usuń stary żeby dodać nowy</string>
     <string name="eq_presets_content_description">Presety EQ</string>
     <string name="eq_preset_delete_confirm">Usuń</string>
+    <string name="eq_preset_import">Importuj z pliku</string>
+    <string name="eq_preset_import_conflict_title">Presety już istnieją</string>
+    <string name="eq_preset_import_conflict_message">Część nazw już jest na liście (%1$d). Nadpisać, czy zostawić stare i dodać tylko nowe?</string>
+    <string name="eq_preset_import_overwrite">Nadpisz</string>
+    <string name="eq_preset_import_skip">Pomiń istniejące</string>
+    <string name="eq_preset_import_done">Zaimportowano: +%1$d · nadpisano %2$d · pominięto %3$d</string>
+    <string name="eq_preset_import_error_read">Nie można odczytać pliku presetu</string>
+    <string name="eq_preset_import_error_format">To nie jest prawidłowy plik presetu Audacious</string>
+    <string name="eq_preset_import_nothing">Nic nie zaimportowano (duplikaty lub limit presetów)</string>
 
     <!-- Mini player -->
     <string name="mini_player_empty">Wybierz utwór</string>

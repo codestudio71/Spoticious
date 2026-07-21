@@ -1,5 +1,7 @@
 package com.codestudio71.spoticious.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.BorderStroke
@@ -62,6 +64,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.codestudio71.spoticious.R
+import com.codestudio71.spoticious.player.EqPreset
+import com.codestudio71.spoticious.player.EqPresetImportConflictMode
+import com.codestudio71.spoticious.player.EqPresetImportOutcome
 import com.codestudio71.spoticious.player.EqPresetSaveOutcome
 import com.codestudio71.spoticious.player.EqualizerAudioProcessor
 import com.codestudio71.spoticious.player.PlayerViewModel
@@ -97,6 +102,39 @@ fun EqScreen(
     var presetNameInput by remember { mutableStateOf("") }
     var deleteCandidate by remember { mutableStateOf<String?>(null) }
     var overwriteName by remember { mutableStateOf<String?>(null) }
+    var importPending by remember { mutableStateOf<List<EqPreset>?>(null) }
+    var importConflictCount by remember { mutableStateOf(0) }
+
+    fun handleImportResult(r: EqPresetImportOutcome) {
+        when (r) {
+            is EqPresetImportOutcome.Imported -> {
+                Toast.makeText(
+                    context,
+                    context.getString(
+                        R.string.eq_preset_import_done,
+                        r.added,
+                        r.overwritten,
+                        r.skipped,
+                    ),
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+            is EqPresetImportOutcome.NeedsConflictResolution -> {
+                importPending = r.pending
+                importConflictCount = r.conflictNames.size
+            }
+            is EqPresetImportOutcome.Error ->
+                Toast.makeText(context, r.message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val importLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            scope.launch {
+                handleImportResult(viewModel.importAudaciousPresetsFromUri(uri))
+            }
+        }
 
     deleteCandidate?.let { name ->
         AlertDialog(
@@ -169,6 +207,73 @@ fun EqScreen(
                 }
             },
             containerColor = MiamiDialogFill
+        )
+    }
+
+    importPending?.let { pending ->
+        AlertDialog(
+            onDismissRequest = {
+                importPending = null
+                importConflictCount = 0
+            },
+            title = {
+                Text(stringResource(R.string.eq_preset_import_conflict_title), color = Color.White)
+            },
+            text = {
+                Text(
+                    stringResource(R.string.eq_preset_import_conflict_message, importConflictCount),
+                    color = Color.White.copy(alpha = 0.85f),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val list = pending
+                        importPending = null
+                        importConflictCount = 0
+                        scope.launch {
+                            handleImportResult(
+                                viewModel.commitAudaciousPresetImport(
+                                    pending = list,
+                                    mode = EqPresetImportConflictMode.Overwrite,
+                                ),
+                            )
+                        }
+                    },
+                ) {
+                    Text(stringResource(R.string.eq_preset_import_overwrite), color = EqMiamiCyan)
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(
+                        onClick = {
+                            val list = pending
+                            importPending = null
+                            importConflictCount = 0
+                            scope.launch {
+                                handleImportResult(
+                                    viewModel.commitAudaciousPresetImport(
+                                        pending = list,
+                                        mode = EqPresetImportConflictMode.SkipExisting,
+                                    ),
+                                )
+                            }
+                        },
+                    ) {
+                        Text(stringResource(R.string.eq_preset_import_skip), color = EqMiamiCyan)
+                    }
+                    TextButton(
+                        onClick = {
+                            importPending = null
+                            importConflictCount = 0
+                        },
+                    ) {
+                        Text(stringResource(R.string.cancel), color = Color.Gray)
+                    }
+                }
+            },
+            containerColor = MiamiDialogFill,
         )
     }
 
@@ -283,6 +388,24 @@ fun EqScreen(
                                             fontSize = 12.sp
                                         )
                                     }
+                                }
+                                TextButton(
+                                    onClick = {
+                                        presetsMenuExpanded = false
+                                        importLauncher.launch(
+                                            arrayOf(
+                                                "text/*",
+                                                "application/octet-stream",
+                                                "*/*",
+                                            ),
+                                        )
+                                    },
+                                ) {
+                                    Text(
+                                        stringResource(R.string.eq_preset_import),
+                                        color = EqMiamiCyan,
+                                        fontSize = 12.sp,
+                                    )
                                 }
                                 HorizontalDivider(
                                     modifier = Modifier.padding(vertical = 8.dp),

@@ -253,6 +253,15 @@
     <string name="eq_preset_error_limit">Preset limit reached — delete one to add another</string>
     <string name="eq_presets_content_description">EQ presets</string>
     <string name="eq_preset_delete_confirm">Delete</string>
+    <string name="eq_preset_import">Import from file</string>
+    <string name="eq_preset_import_conflict_title">Presets already exist</string>
+    <string name="eq_preset_import_conflict_message">Some names already exist (%1$d). Overwrite them, or keep existing and import only new ones?</string>
+    <string name="eq_preset_import_overwrite">Overwrite</string>
+    <string name="eq_preset_import_skip">Skip existing</string>
+    <string name="eq_preset_import_done">Imported: +%1$d · overwritten %2$d · skipped %3$d</string>
+    <string name="eq_preset_import_error_read">Could not read preset file</string>
+    <string name="eq_preset_import_error_format">Not a valid Audacious preset file</string>
+    <string name="eq_preset_import_nothing">Nothing imported (duplicates or preset limit)</string>
 
     <!-- Mini player -->
     <string name="mini_player_empty">Choose a track</string>

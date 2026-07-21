@@ -371,7 +371,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             val snapshot = EqPreset(
                 name = trimmed,
                 gains = _eqBandGains.value.map { it.coerceIn(-15f, 15f) },
-                enabled = _eqEnabled.value
+                enabled = _eqEnabled.value,
+                preamp = _eqPreampDb.value.coerceIn(-15f, 15f),
             )
             val newList = if (isDuplicate && overwrite) {
                 current.mapIndexed { idx, p -> if (idx == duplicateIndex) snapshot else p }
@@ -388,6 +389,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         withContext(Dispatchers.Main.immediate) {
             _eqEnabled.value = preset.enabled
             _eqBandGains.value = preset.normalizedBandGains()
+            _eqPreampDb.value = preset.normalizedPreamp()
             applyEqStateToProcessor()
         }
         withContext(Dispatchers.IO) {
@@ -400,6 +402,124 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             val newList = _eqPresets.value.filterNot { it.name == name }
             persistPresetsList(newList)
         }
+    }
+
+    /**
+     * Import presetów Audacious z URI (SAF).
+     * Przy konfliktach nazw → [EqPresetImportOutcome.NeedsConflictResolution],
+     * potem [commitAudaciousPresetImport].
+     */
+    suspend fun importAudaciousPresetsFromUri(
+        uri: Uri,
+    ): EqPresetImportOutcome =
+        withContext(Dispatchers.IO) {
+            val app = getApplication<Application>()
+            val text =
+                try {
+                    app.contentResolver.openInputStream(uri)?.use { stream ->
+                        stream.bufferedReader().readText()
+                    }
+                } catch (_: Exception) {
+                    null
+                }
+            if (text.isNullOrBlank()) {
+                return@withContext EqPresetImportOutcome.Error(
+                    app.getString(R.string.eq_preset_import_error_read),
+                )
+            }
+            val fallback =
+                displayNameForUri(uri)
+                    .substringBeforeLast('.')
+                    .ifBlank { "Imported" }
+            val parsed = AudaciousEqPresetParser.parse(text, fallbackName = fallback)
+            if (parsed.isEmpty()) {
+                return@withContext EqPresetImportOutcome.Error(
+                    app.getString(R.string.eq_preset_import_error_format),
+                )
+            }
+            val pending =
+                parsed.map { p ->
+                    EqPresetJsonCodec.normalize(
+                        EqPreset(
+                            name = p.name,
+                            gains = p.bands,
+                            enabled = true,
+                            preamp = p.preamp,
+                        ),
+                    )
+                }
+
+            val current = _eqPresets.value
+            val conflicts =
+                pending
+                    .map { it.name }
+                    .filter { name ->
+                        current.any { it.name.equals(name, ignoreCase = true) }
+                    }
+                    .distinct()
+
+            if (conflicts.isNotEmpty()) {
+                return@withContext EqPresetImportOutcome.NeedsConflictResolution(
+                    pending = pending,
+                    conflictNames = conflicts,
+                )
+            }
+
+            mergeImportedPresets(pending, EqPresetImportConflictMode.SkipExisting)
+        }
+
+    /** Dopięcie importu po dialogu konfliktów (bez ponownego czytania pliku). */
+    suspend fun commitAudaciousPresetImport(
+        pending: List<EqPreset>,
+        mode: EqPresetImportConflictMode,
+    ): EqPresetImportOutcome =
+        withContext(Dispatchers.IO) {
+            mergeImportedPresets(pending, mode)
+        }
+
+    private suspend fun mergeImportedPresets(
+        pending: List<EqPreset>,
+        mode: EqPresetImportConflictMode,
+    ): EqPresetImportOutcome {
+        val app = getApplication<Application>()
+        var list = _eqPresets.value.toMutableList()
+        var added = 0
+        var overwritten = 0
+        var skipped = 0
+
+        for (preset in pending) {
+            val idx = list.indexOfFirst { it.name.equals(preset.name, ignoreCase = true) }
+            if (idx >= 0) {
+                when (mode) {
+                    EqPresetImportConflictMode.Overwrite -> {
+                        list[idx] = preset
+                        overwritten++
+                    }
+                    EqPresetImportConflictMode.SkipExisting -> skipped++
+                }
+                continue
+            }
+            if (list.size >= MAX_EQ_PRESETS) {
+                skipped++
+                continue
+            }
+            list.add(preset)
+            added++
+        }
+
+        if (added == 0 && overwritten == 0) {
+            return EqPresetImportOutcome.Error(
+                app.getString(R.string.eq_preset_import_nothing),
+            )
+        }
+
+        list = list.sortedBy { it.name.lowercase(Locale.getDefault()) }.toMutableList()
+        persistPresetsList(list)
+        return EqPresetImportOutcome.Imported(
+            added = added,
+            overwritten = overwritten,
+            skipped = skipped,
+        )
     }
 
     private fun restoreLastPlayback() {

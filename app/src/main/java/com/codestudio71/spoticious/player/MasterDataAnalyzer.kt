@@ -165,15 +165,16 @@ object MasterDataAnalyzer {
     }
 
     /**
-     * Liczy zdarzenia „kolejna próbka na szynie”: |x| ≥ [CLIP_THRESHOLD] przy poprzedniej próbce
-     * tego samego kanału też na szynie. [samples] — interleaved (L,R,…); [prevRail] — stan między chunkami.
+     * 1 clip = jeden run ≥2 kolejnych próbek na szynie (nie liczba próbek FS).
+     * [runCounted] — czy ten run już policzony (stan między chunkami).
      */
     private fun countClipsStereoInterleaved(
         samples: FloatArray,
         channelCount: Int,
-        prevRail: BooleanArray
+        prevRail: BooleanArray,
+        runCounted: BooleanArray,
     ): Int {
-        require(channelCount >= 1 && prevRail.size == channelCount)
+        require(channelCount >= 1 && prevRail.size == channelCount && runCounted.size == channelCount)
         if (samples.isEmpty()) return 0
         val frameCount = samples.size / channelCount
         if (frameCount <= 0) return 0
@@ -181,9 +182,12 @@ object MasterDataAnalyzer {
         var base = 0
         repeat(frameCount) {
             for (ch in 0 until channelCount) {
-                val v = samples[base + ch]
-                val isRail = abs(v) >= CLIP_THRESHOLD
-                if (isRail && prevRail[ch]) added++
+                val isRail = abs(samples[base + ch]) >= CLIP_THRESHOLD
+                if (isRail && prevRail[ch] && !runCounted[ch]) {
+                    added++
+                    runCounted[ch] = true
+                }
+                if (!isRail) runCounted[ch] = false
                 prevRail[ch] = isRail
             }
             base += channelCount
@@ -350,6 +354,7 @@ object MasterDataAnalyzer {
                 /** Reszta bajtów między readami — wymagane dla 24-bit (np. 8192 mod 3 = 2). */
                 var carry24 = ByteArray(0)
                 val wavPrevRail = BooleanArray(channels) { false }
+                val wavRunCounted = BooleanArray(channels) { false }
 
                 while (remaining > 0) {
                     val toRead = minOf(readBuffer.size.toLong(), remaining).toInt()
@@ -373,7 +378,7 @@ object MasterDataAnalyzer {
                                     out[i] = shortVal.toInt() / 32768f
                                     i++
                                 }
-                                processor.addClips(countClipsStereoInterleaved(out, channels, wavPrevRail))
+                                processor.addClips(countClipsStereoInterleaved(out, channels, wavPrevRail, wavRunCounted))
                                 out
                             }
                         }
@@ -407,7 +412,7 @@ object MasterDataAnalyzer {
                                     out[i] = v / 8388608f
                                     i++
                                 }
-                                processor.addClips(countClipsStereoInterleaved(out, channels, wavPrevRail))
+                                processor.addClips(countClipsStereoInterleaved(out, channels, wavPrevRail, wavRunCounted))
                                 out
                             }
                         }
@@ -422,7 +427,7 @@ object MasterDataAnalyzer {
                                     val raw = bb.float
                                     out[i++] = raw.coerceIn(-1f, 1f)
                                 }
-                                processor.addClips(countClipsStereoInterleaved(out, channels, wavPrevRail))
+                                processor.addClips(countClipsStereoInterleaved(out, channels, wavPrevRail, wavRunCounted))
                                 out
                             }
                         }
@@ -437,7 +442,7 @@ object MasterDataAnalyzer {
                                     val iv = bb.int
                                     out[i++] = (iv / 2147483648f).coerceIn(-1f, 1f)
                                 }
-                                processor.addClips(countClipsStereoInterleaved(out, channels, wavPrevRail))
+                                processor.addClips(countClipsStereoInterleaved(out, channels, wavPrevRail, wavRunCounted))
                                 out
                             }
                         }
@@ -512,6 +517,7 @@ object MasterDataAnalyzer {
 
             var globalOutputSampleIndex = 0L
             val mcPrevRail = BooleanArray(outputChannels) { false }
+            val mcRunCounted = BooleanArray(outputChannels) { false }
 
             // STREAMING: only block buffer + List<Double>, no full FloatArray
             val processor = StreamingProcessor(outputSampleRate, outputChannels)
@@ -583,12 +589,17 @@ object MasterDataAnalyzer {
 
                                         if (skipStart || skipEnd) {
                                             mcPrevRail.fill(false)
+                                            mcRunCounted.fill(false)
                                             continue
                                         }
 
                                         val floatVal = shortVal.toInt() / 32768f
                                         val isRail = abs(floatVal) >= CLIP_THRESHOLD
-                                        if (isRail && mcPrevRail[ch]) chunkClips++
+                                        if (isRail && mcPrevRail[ch] && !mcRunCounted[ch]) {
+                                            chunkClips++
+                                            mcRunCounted[ch] = true
+                                        }
+                                        if (!isRail) mcRunCounted[ch] = false
                                         mcPrevRail[ch] = isRail
                                         chunk[w++] = floatVal
                                     }
