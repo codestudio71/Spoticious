@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -104,11 +105,18 @@ object RecordingSession {
         beatPreviewPlayer.clear()
     }
 
-    /** Ten sam gain słychać w podglądzie (ExoPlayer) i w mixie po STOP. */
-    fun setBeatGain(value: Float) {
+    /** Ten sam gain w stanie (UI/mix). [applyToPlayer]=false przy drag suwaka — bez trzasków Exo. */
+    fun setBeatGain(value: Float, applyToPlayer: Boolean = true) {
         val g = value.coerceIn(0f, 1f)
         _beatGain.value = g
-        beatPreviewPlayer.setVolume(g)
+        if (applyToPlayer) {
+            beatPreviewPlayer.setVolume(g)
+        }
+    }
+
+    /** Po puszczeniu suwaka — jednorazowe [ExoPlayer.setVolume]. */
+    fun applyBeatGainToPlayer() {
+        beatPreviewPlayer.setVolume(_beatGain.value)
     }
 
     /**
@@ -167,9 +175,16 @@ object RecordingSession {
                     beatPreviewPlayer.loadBeat(beatUri)
                 }
                 beatPreviewPlayer.setVolume(_beatGain.value)
-                beatPreviewPlayer.seekToStart()
+                // Mik: czekaj aż pętla AudioRecord ustawi captureStart (race bez tego → offset=0).
+                withTimeoutOrNull(2_000L) {
+                    while (vocalRecorder.captureStartElapsedMs <= 0L) {
+                        delay(5)
+                    }
+                }
+                // Seek jest async — bez await mix (od 0) rozjeżdża się z tym co słychać.
+                beatPreviewPlayer.seekToStartAndAwaitReady()
                 beatPreviewPlayer.play()
-                scope.launch { captureBeatStartOffset() }
+                captureBeatStartOffset()
             }
         }
         return true
@@ -177,16 +192,21 @@ object RecordingSession {
 
     /** Beat rusza później niż mikrofon — zapamiętaj różnicę, żeby mix się nie rozjechał. */
     private suspend fun captureBeatStartOffset() {
+        val captureStart =
+            withTimeoutOrNull(2_000L) {
+                while (vocalRecorder.captureStartElapsedMs <= 0L) {
+                    delay(5)
+                }
+                vocalRecorder.captureStartElapsedMs
+            } ?: return
+
         val startedPlaying =
             withTimeoutOrNull(5_000L) {
                 beatPreviewPlayer.isPlaying.first { it }
             }
-        if (startedPlaying == true) {
-            val captureStart = vocalRecorder.captureStartElapsedMs
-            if (captureStart > 0L) {
-                beatStartOffsetMs =
-                    (SystemClock.elapsedRealtime() - captureStart).coerceAtLeast(0L)
-            }
+        if (startedPlaying == true && captureStart > 0L) {
+            beatStartOffsetMs =
+                (SystemClock.elapsedRealtime() - captureStart).coerceAtLeast(0L)
         }
     }
 

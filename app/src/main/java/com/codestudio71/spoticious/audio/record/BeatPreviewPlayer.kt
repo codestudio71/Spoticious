@@ -5,6 +5,7 @@ import android.content.Context
 import android.media.AudioDeviceInfo
 import android.media.audiofx.Visualizer
 import android.os.Build
+import android.os.SystemClock
 import android.net.Uri
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.ExoPlayer
@@ -21,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 
 /** Lokalny beat pod nagrywanie — bez audio focus, niezależny od [PlaybackService]. */
 class BeatPreviewPlayer(context: Context) {
@@ -216,6 +218,34 @@ class BeatPreviewPlayer(context: Context) {
         player.seekTo(0)
     }
 
+    /**
+     * Seek na początek i czekaj aż ExoPlayer realnie będzie na ~0 w STATE_READY.
+     * Bez tego [play] zaraz po [seekToStart] potrafi wystartować ze starej pozycji
+     * (seek jest asynchroniczny) — mix zawsze bierze beat od próbki 0.
+     */
+    suspend fun seekToStartAndAwaitReady(timeoutMs: Long = 4_000L): Boolean =
+        withContext(Dispatchers.Main.immediate) {
+            if (player.mediaItemCount <= 0) return@withContext false
+            if (player.playbackState == Player.STATE_IDLE) {
+                player.prepare()
+            }
+            player.seekTo(0)
+            val deadline = SystemClock.elapsedRealtime() + timeoutMs
+            while (SystemClock.elapsedRealtime() < deadline) {
+                val state = player.playbackState
+                val pos = player.currentPosition
+                if (state == Player.STATE_READY && pos <= SEEK_READY_POSITION_TOLERANCE_MS) {
+                    _positionMs.value = pos.coerceAtLeast(0L)
+                    return@withContext true
+                }
+                if (state == Player.STATE_ENDED) {
+                    player.seekTo(0)
+                }
+                delay(16)
+            }
+            player.playbackState == Player.STATE_READY
+        }
+
     /** Czyści źródło (np. po usunięciu bitu z listy). */
     fun clear() {
         releaseVisualizer()
@@ -238,5 +268,9 @@ class BeatPreviewPlayer(context: Context) {
             player.release()
         } catch (_: Exception) {
         }
+    }
+
+    companion object {
+        private const val SEEK_READY_POSITION_TOLERANCE_MS = 80L
     }
 }

@@ -7,11 +7,11 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.codestudio71.spoticious.R
+import com.codestudio71.spoticious.player.PlaybackService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.io.File
 
 data class CutSegment(
     val id: Long,
@@ -40,12 +40,10 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
 
     private val peaksExtractor = AudioPeaks()
     private val cutter = AudioCutter()
+    private val previewPlayer = CutRangePreviewPlayer(application)
 
     private val _uiState = MutableStateFlow<CutUiState>(CutUiState.Idle)
     val uiState: StateFlow<CutUiState> = _uiState.asStateFlow()
-
-    private val _positionMs = MutableStateFlow(0L)
-    val positionMs: StateFlow<Long> = _positionMs.asStateFlow()
 
     private val _fromMs = MutableStateFlow(0L)
     val fromMs: StateFlow<Long> = _fromMs.asStateFlow()
@@ -59,19 +57,27 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
     private val _exportingId = MutableStateFlow<Long?>(null)
     val exportingId: StateFlow<Long?> = _exportingId.asStateFlow()
 
-    private val _selectedSegmentIds = MutableStateFlow<Set<Long>>(emptySet())
-    val selectedSegmentIds: StateFlow<Set<Long>> = _selectedSegmentIds.asStateFlow()
+    /**
+     * Kolejność zaznaczenia do merge (1 = pierwsze kliknięcie).
+     * Lista, nie Set — kolejność = kolejność w pliku wynikowym.
+     */
+    private val _selectedSegmentIds = MutableStateFlow<List<Long>>(emptyList())
+    val selectedSegmentIds: StateFlow<List<Long>> = _selectedSegmentIds.asStateFlow()
 
     private val _merging = MutableStateFlow(false)
     val merging: StateFlow<Boolean> = _merging.asStateFlow()
+
+    val previewPlaying: StateFlow<Boolean> = previewPlayer.isPlaying
+    val previewPositionMs: StateFlow<Long> = previewPlayer.positionMs
 
     private var nextSegmentId = 1L
 
     fun loadFile(context: Context, uri: Uri, displayName: String) {
         viewModelScope.launch {
+            previewPlayer.clear()
             _uiState.value = CutUiState.Loading(0f)
             _segments.value = emptyList()
-            _selectedSegmentIds.value = emptySet()
+            _selectedSegmentIds.value = emptyList()
             nextSegmentId = 1L
             try {
                 context.contentResolver.takePersistableUriPermission(
@@ -93,17 +99,28 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
 
             _fromMs.value = 0L
             _toMs.value = peaks.durationMs.coerceAtLeast(1L)
-            _positionMs.value = 0L
+            previewPlayer.load(uri)
             _uiState.value = CutUiState.Ready(peaks, uri, displayName)
         }
     }
 
-    fun setPosition(ms: Long) {
-        val duration = durationMs() ?: return
-        _positionMs.value = ms.coerceIn(0L, duration)
+    fun togglePreview() {
+        if (_fromMs.value >= _toMs.value) return
+        if (!previewPlayer.isPlaying.value) {
+            // Nie mieszaj z głównym playerem — tylko pauza, bez auto-resume
+            runCatching {
+                PlaybackService.player?.takeIf { it.isPlaying }?.pause()
+            }
+        }
+        previewPlayer.toggle(_fromMs.value, _toMs.value)
+    }
+
+    fun stopPreview() {
+        previewPlayer.pause()
     }
 
     fun nudgeFrom(deltaMs: Long) {
+        stopPreview()
         val duration = durationMs() ?: return
         _fromMs.value = (_fromMs.value + deltaMs).coerceIn(0L, duration)
         if (_fromMs.value >= _toMs.value) {
@@ -112,6 +129,7 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun nudgeTo(deltaMs: Long) {
+        stopPreview()
         val duration = durationMs() ?: return
         _toMs.value = (_toMs.value + deltaMs).coerceIn(0L, duration)
         if (_toMs.value <= _fromMs.value) {
@@ -120,6 +138,7 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setFromMs(ms: Long) {
+        stopPreview()
         val duration = durationMs() ?: return
         _fromMs.value = ms.coerceIn(0L, duration)
         if (_fromMs.value >= _toMs.value) {
@@ -128,6 +147,7 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setToMs(ms: Long) {
+        stopPreview()
         val duration = durationMs() ?: return
         _toMs.value = ms.coerceIn(0L, duration)
         if (_toMs.value <= _fromMs.value) {
@@ -137,6 +157,7 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
 
     fun addSegment() {
         if (_fromMs.value >= _toMs.value) return
+        stopPreview()
         val index = _segments.value.size + 1
         val app = getApplication<Application>()
         val segment =
@@ -162,17 +183,23 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
             ?.exportCacheFile
             ?.let { runCatching { it.delete() } }
         _segments.value = _segments.value.filter { it.id != id }
-        _selectedSegmentIds.value = _selectedSegmentIds.value - id
+        _selectedSegmentIds.value = _selectedSegmentIds.value.filter { it != id }
     }
 
     fun toggleSegmentSelected(id: Long) {
         val current = _selectedSegmentIds.value
         _selectedSegmentIds.value =
             if (id in current) {
-                current - id
+                current.filter { it != id }
             } else {
                 current + id
             }
+    }
+
+    /** 1-based kolejność w merge; null gdy nie zaznaczony. */
+    fun mergeOrderOf(id: Long): Int? {
+        val idx = _selectedSegmentIds.value.indexOf(id)
+        return if (idx >= 0) idx + 1 else null
     }
 
     fun exportMerged(
@@ -185,10 +212,13 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
         val ids = _selectedSegmentIds.value
         if (ids.size < 2 || _merging.value || _exportingId.value != null) return
 
+        stopPreview()
+        val byId = _segments.value.associateBy { it.id }
         val windows =
-            _segments.value
-                .filter { it.id in ids }
-                .map { it.startMs to it.endMs }
+            ids.mapNotNull { id ->
+                val seg = byId[id] ?: return@mapNotNull null
+                seg.startMs to seg.endMs
+            }
         if (windows.size < 2) return
 
         viewModelScope.launch {
@@ -221,7 +251,7 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
                 onError()
                 return@launch
             }
-            _selectedSegmentIds.value = emptySet()
+            _selectedSegmentIds.value = emptyList()
             onSaved(displayName)
         }
     }
@@ -236,6 +266,7 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
         val segment = _segments.value.firstOrNull { it.id == id } ?: return
         if (_exportingId.value != null) return
 
+        stopPreview()
         viewModelScope.launch {
             _exportingId.value = id
             val outFile =
@@ -282,6 +313,11 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
                 }
             onSaved(displayName)
         }
+    }
+
+    override fun onCleared() {
+        previewPlayer.destroy()
+        super.onCleared()
     }
 
     private fun durationMs(): Long? =

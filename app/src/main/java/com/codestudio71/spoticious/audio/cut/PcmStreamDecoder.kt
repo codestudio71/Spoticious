@@ -93,6 +93,28 @@ object PcmStreamDecoder {
         }
     }
 
+    /**
+     * Szacunek peak dBFS pliku (pierwsze [probeSeconds] albo cały krótki plik).
+     * Do UI metra BEAT: wyświetlane ≈ peak + 20·log10(gain).
+     */
+    fun estimatePeakDbfs(
+        context: Context,
+        uri: Uri,
+        targetSampleRate: Int = 48_000,
+        probeSeconds: Int = 45,
+    ): Float {
+        val maxSamples = (targetSampleRate.toLong() * probeSeconds.coerceAtLeast(1)).toInt()
+        val samples =
+            decodeUriToMonoFloatLimited(context, uri, targetSampleRate, maxSamples)
+                ?: return -12f
+        var peak = 1e-6f
+        for (s in samples) {
+            val a = kotlin.math.abs(s)
+            if (a > peak) peak = a
+        }
+        return (20.0 * kotlin.math.log10(peak.toDouble())).toFloat().coerceIn(-60f, 0f)
+    }
+
     fun extractPeaks(
         context: Context,
         uri: Uri,

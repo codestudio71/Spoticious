@@ -132,6 +132,7 @@ fun RecordPreviewScreen(
     val mixInProgress by viewModel.mixInProgress.collectAsState()
     val beatPosMs by viewModel.beatPositionMs.collectAsState()
     val beatDurMs by viewModel.beatDurationMs.collectAsState()
+    val beatPlaying by viewModel.beatIsPlaying.collectAsState()
 
     var deviceMenu by remember { mutableStateOf(false) }
     var outputDeviceMenu by remember { mutableStateOf(false) }
@@ -148,6 +149,13 @@ fun RecordPreviewScreen(
 
     var sliderDragging by remember { mutableStateOf(false) }
     var sliderDraft by remember { mutableFloatStateOf(0f) }
+    var beatSeekDragging by remember { mutableStateOf(false) }
+    var beatSeekDraft by remember { mutableFloatStateOf(0f) }
+    var beatGainDragging by remember { mutableStateOf(false) }
+    var beatGainDraft by remember { mutableFloatStateOf(beatGain) }
+    LaunchedEffect(beatGain) {
+        if (!beatGainDragging) beatGainDraft = beatGain
+    }
 
     val permLauncher =
         rememberLauncherForActivityResult(
@@ -465,10 +473,19 @@ fun RecordPreviewScreen(
                             modifier = Modifier.width(72.dp),
                         )
                         Slider(
-                            value = beatGain,
-                            onValueChange = { viewModel.setBeatGain(it) },
+                            value = if (beatGainDragging) beatGainDraft else beatGain,
+                            onValueChange = { v ->
+                                beatGainDragging = true
+                                beatGainDraft = v.coerceIn(0f, 1f)
+                                viewModel.setBeatGain(beatGainDraft)
+                            },
+                            onValueChangeFinished = {
+                                beatGainDragging = false
+                                viewModel.commitBeatGain()
+                            },
                             valueRange = 0f..1f,
                             modifier = Modifier.weight(1f),
+                            enabled = !beatUiLocked,
                             colors =
                                 SliderDefaults.colors(
                                     thumbColor = Color(0xFFFF4DB8),
@@ -494,11 +511,81 @@ fun RecordPreviewScreen(
                             },
                         )
                         Text(
-                            "${(beatGain * 100).roundToInt()}%",
+                            "${((if (beatGainDragging) beatGainDraft else beatGain) * 100).roundToInt()}%",
                             color = Color.White,
                             fontSize = 11.sp,
                             modifier = Modifier.width(40.dp),
                         )
+                    }
+
+                    if (!isRecording && !isBusy && savedRecording == null) {
+                        Spacer(modifier.height(8.dp))
+                        WaveformWithMeter(
+                            label = "BEAT",
+                            frames = beatWaveform,
+                            dbfs = beatDbfs,
+                            peakDbfs = beatPeakDbfs,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        val beatDurMax = beatDurMs.coerceAtLeast(1L).toFloat()
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            IconButton(
+                                onClick = { viewModel.toggleBeatPreviewPlayback() },
+                                modifier = Modifier.size(40.dp),
+                                enabled = !beatUiLocked,
+                            ) {
+                                Icon(
+                                    imageVector =
+                                        if (beatPlaying) {
+                                            Icons.Default.Pause
+                                        } else {
+                                            Icons.Default.PlayArrow
+                                        },
+                                    contentDescription = stringResource(R.string.record_beat_preview),
+                                    tint = CyanUi,
+                                )
+                            }
+                            Slider(
+                                value =
+                                    if (beatSeekDragging) {
+                                        beatSeekDraft
+                                    } else {
+                                        beatPosMs.toFloat().coerceIn(0f, beatDurMax)
+                                    },
+                                onValueChange = { v ->
+                                    beatSeekDragging = true
+                                    beatSeekDraft = v.coerceIn(0f, beatDurMax)
+                                },
+                                onValueChangeFinished = {
+                                    beatSeekDragging = false
+                                    viewModel.seekBeatTo(beatSeekDraft.toLong())
+                                },
+                                modifier = Modifier.weight(1f),
+                                valueRange = 0f..beatDurMax,
+                                enabled = beatDurMs > 0L,
+                                colors =
+                                    SliderDefaults.colors(
+                                        thumbColor = CyanUi,
+                                        activeTrackColor = CyanUi,
+                                        inactiveTrackColor = Color.White.copy(alpha = 0.3f),
+                                    ),
+                            )
+                            Text(
+                                text =
+                                    "${formatRecordTime(if (beatSeekDragging) beatSeekDraft.toLong() else beatPosMs)} / " +
+                                        formatRecordTime(beatDurMs),
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                            )
+                        }
                     }
                 }
             } else {

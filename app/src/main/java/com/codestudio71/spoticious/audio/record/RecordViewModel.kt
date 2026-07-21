@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.Application
 import android.content.ContentValues
 import android.media.AudioDeviceInfo
-import android.media.audiofx.Visualizer
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -14,6 +13,7 @@ import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.codestudio71.spoticious.R
+import com.codestudio71.spoticious.audio.cut.PcmStreamDecoder
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,6 +66,12 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     private var beatPeakDisplayDb = -60f
     private var beatPeakLastRaiseMs = 0L
 
+    /**
+     * Peak dBFS pliku beatu przy gain=1 (analiza po pick). Meter UI =
+     * [beatRefPeakDbfs] + 20·log10(gain) — bez Visualizera i bez fałszywych delt.
+     */
+    private val _beatRefPeakDbfs = MutableStateFlow(-12f)
+
     private val _micWaveform = MutableStateFlow<List<FrameResult>>(emptyList())
     val micWaveform: StateFlow<List<FrameResult>> = _micWaveform.asStateFlow()
 
@@ -83,26 +89,6 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _beatPeakDbfs = MutableStateFlow(-60f)
     val beatPeakDbfs: StateFlow<Float> = _beatPeakDbfs.asStateFlow()
-
-    private val beatVisualizerListener =
-        object : Visualizer.OnDataCaptureListener {
-            override fun onWaveFormDataCapture(
-                visualizer: Visualizer?,
-                waveform: ByteArray?,
-                samplingRate: Int,
-            ) {
-                if (waveform == null) return
-                val frame = waveformAnalyzer.analyzeUnsigned8bit(waveform, 0, waveform.size)
-                pushBeatFrame(frame)
-            }
-
-            override fun onFftDataCapture(
-                visualizer: Visualizer?,
-                fft: ByteArray?,
-                samplingRate: Int,
-            ) {
-            }
-        }
 
     val inputDevices: StateFlow<List<InputDeviceOption>> = deviceRepo.devices
 
@@ -353,18 +339,38 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     fun pickBeat(uri: Uri) {
         RecordingSession.pickBeat(uri, _selectedOutputDevice.value)
+        _beatRefPeakDbfs.value = -12f
+        publishBeatLevelFromGain(beatGain.value)
+        viewModelScope.launch(Dispatchers.IO) {
+            val peak =
+                PcmStreamDecoder.estimatePeakDbfs(
+                    context = getApplication(),
+                    uri = uri,
+                )
+            _beatRefPeakDbfs.value = peak
+            publishBeatLevelFromGain(RecordingSession.beatGain.value)
+        }
     }
 
-    /** Ten sam gain słychać w podglądzie (ExoPlayer) i w mixie po STOP. */
+    /**
+     * Suwak: aktualizuje gain + meter od razu, **bez** ExoPlayer.volume.
+     * Ciągłe setVolume = trzaski w wyjściu → brudny mic. Volume: [commitBeatGain].
+     */
     fun setBeatGain(value: Float) {
         val g = value.coerceIn(0f, 1f)
-        val old = beatGain.value
-        if (old == g) return
-        RecordingSession.setBeatGain(g)
-        refreshBeatVisualizationForGain(old, g)
+        if (beatGain.value == g) return
+        RecordingSession.setBeatGain(g, applyToPlayer = false)
+        publishBeatLevelFromGain(g)
+    }
+
+    /** Puszczenie suwaka / play / przed REC — jednorazowe [ExoPlayer.setVolume]. */
+    fun commitBeatGain() {
+        RecordingSession.applyBeatGainToPlayer()
+        publishBeatLevelFromGain(beatGain.value)
     }
 
     fun toggleBeatPreviewPlayback() {
+        commitBeatGain()
         beatPreviewPlayer.togglePlayPause()
     }
 
@@ -374,6 +380,12 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     fun clearBeat() {
         RecordingSession.clearBeat()
+        _beatRefPeakDbfs.value = -12f
+        publishBeatLevelFromGain(0f)
+        synchronized(waveformBufferLock) {
+            beatWaveformBuffer.clear()
+            _beatWaveform.value = emptyList()
+        }
     }
 
     fun setSelectedDevice(deviceId: Int) {
@@ -429,6 +441,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         _beatDbfs.value = -60f
         _micPeakDbfs.value = -60f
         _beatPeakDbfs.value = -60f
+        publishBeatLevelFromGain(beatGain.value)
     }
 
     private fun pushMicFrame(frame: FrameResult) {
@@ -446,23 +459,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun pushBeatFrame(rawFrame: FrameResult) {
-        val frame = applyBeatGainToFrame(rawFrame, beatGain.value)
-        processBeatVuAndPeak(frame.dbfs)
-        val nowMs = SystemClock.elapsedRealtime()
-        synchronized(waveformBufferLock) {
-            beatWaveformBuffer.addLast(rawFrame)
-            while (beatWaveformBuffer.size > 200) {
-                beatWaveformBuffer.removeFirst()
-            }
-            if (lastBeatWaveListEmitMs < 0 || nowMs - lastBeatWaveListEmitMs >= WAVE_SNAPSHOT_INTERVAL_MS) {
-                _beatWaveform.value = beatWaveformBuffer.map { applyBeatGainToFrame(it, beatGain.value) }
-                lastBeatWaveListEmitMs = nowMs
-            }
-        }
-    }
-
-    /** Visualizer widzi PCM przed ExoPlayer.volume — skalujemy jak gain na wyjściu. */
+    /** Skalowanie waveformu (gdy kiedyś wróci live capture) — dBFS BEAT z peak×gain. */
     private fun applyBeatGainToFrame(frame: FrameResult, gain: Float): FrameResult {
         val g = gain.coerceIn(0f, 1f)
         if (g <= 0f) return waveformAnalyzer.silentFrame()
@@ -476,21 +473,32 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
-    private fun refreshBeatVisualizationForGain(oldGain: Float, newGain: Float) {
-        val dbDelta =
-            if (oldGain > 0f && newGain > 0f) {
-                (20f * log10(newGain / oldGain)).toFloat()
-            } else if (newGain <= 0f) {
-                -60f - smoothedBeatDb
-            } else {
-                0f
+    private fun estimateBeatOutputDbfs(gain: Float): Float {
+        val g = gain.coerceIn(0f, 1f)
+        if (g <= 0f) return -60f
+        val gainDb = (20.0 * log10(g.toDouble())).toFloat()
+        return (_beatRefPeakDbfs.value + gainDb).coerceIn(-60f, 0f)
+    }
+
+    private fun publishBeatLevelFromGain(gain: Float) {
+        val level = estimateBeatOutputDbfs(gain)
+        smoothedBeatDb = level
+        _beatDbfs.value = level
+        if (level >= beatPeakDisplayDb) {
+            beatPeakDisplayDb = level
+            beatPeakLastRaiseMs = SystemClock.elapsedRealtime()
+        } else {
+            // Peak hold: przy ściszeniu bieżący spada, peak zostaje chwilę
+            val nowMs = SystemClock.elapsedRealtime()
+            if (nowMs - beatPeakLastRaiseMs > 2000L) {
+                beatPeakDisplayDb = level
             }
-        smoothedBeatDb = (smoothedBeatDb + dbDelta).coerceIn(-60f, 0f)
-        beatPeakDisplayDb = (beatPeakDisplayDb + dbDelta).coerceIn(-60f, 0f)
-        _beatDbfs.value = smoothedBeatDb
-        _beatPeakDbfs.value = beatPeakDisplayDb
+        }
+        _beatPeakDbfs.value = beatPeakDisplayDb.coerceIn(-60f, 0f)
         synchronized(waveformBufferLock) {
-            _beatWaveform.value = beatWaveformBuffer.map { applyBeatGainToFrame(it, newGain) }
+            if (beatWaveformBuffer.isNotEmpty()) {
+                _beatWaveform.value = beatWaveformBuffer.map { applyBeatGainToFrame(it, gain) }
+            }
         }
     }
 
@@ -510,27 +518,12 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         _micPeakDbfs.value = micPeakDisplayDb
     }
 
-    private fun processBeatVuAndPeak(rawDbFs: Float) {
-        val prev = smoothedBeatDb
-        val coeff = if (rawDbFs > prev) VU_ATTACK else VU_RELEASE
-        smoothedBeatDb = prev + coeff * (rawDbFs - prev)
-        _beatDbfs.value = smoothedBeatDb
-
-        val nowMs = SystemClock.elapsedRealtime()
-        if (rawDbFs >= beatPeakDisplayDb) {
-            beatPeakDisplayDb = rawDbFs.coerceAtMost(0f)
-            beatPeakLastRaiseMs = nowMs
-        } else if (nowMs - beatPeakLastRaiseMs > 2000L) {
-            beatPeakDisplayDb += PEAK_FOLLOW_MS * (smoothedBeatDb - beatPeakDisplayDb)
-        }
-        _beatPeakDbfs.value = beatPeakDisplayDb
-    }
-
 
     fun confirmStartRecording() {
         viewModelScope.launch {
             savedTakePreviewPlayer.clear()
             resetWaveformVisualization()
+            commitBeatGain()
 
             val started =
                 RecordingSession.startRecording(
@@ -548,6 +541,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             }
 
             beatPreviewPlayer.releaseVisualizer()
+            publishBeatLevelFromGain(beatGain.value)
         }
     }
 

@@ -52,6 +52,7 @@
     <string name="record_choose_output">Wybierz wyjście</string>
     <string name="record_add_beat">Dodaj bit (plik audio)</string>
     <string name="record_beat_volume">Głośność bitu</string>
+    <string name="record_beat_preview">Podgląd bitu</string>
     <string name="record_save">Zapisz do Muzyka</string>
     <string name="record_share">Udostępnij</string>
     <string name="record_name_placeholder">Nazwa nagrania</string>
@@ -99,9 +100,13 @@
     <string name="audio_cut_export_failed">Eksport nie powiódł się</string>
     <string name="audio_cut_merge_segments">Połącz fragmenty</string>
     <string name="audio_cut_merge_default">Połączony fragment</string>
-    <string name="audio_cut_merge_hint">Zaznacz 2+ fragmenty, potem połącz w jeden WAV.</string>
+    <string name="audio_cut_merge_hint">Zaznacz 2+ fragmenty w kolejności merge (1, 2, 3…), potem połącz w jeden WAV.</string>
+    <string name="audio_cut_preview">Podgląd zaznaczenia</string>
+    <string name="audio_cut_preview_hint">Odsłuchaj zakres Od–Do przed eksportem</string>
+    <string name="audio_cut_preview_playing">Podgląd %1$s / %2$s</string>
     <string name="audio_cut_merging">Łączenie…</string>
     <string name="audio_cut_waveform">Waveform</string>
+    <string name="audio_cut_waveform_hint">Przeciągnij cyan (start) / różowy (koniec)</string>
     <string name="audio_cut_edit_unit_title">Ustaw %1$s</string>
     <string name="audio_cut_unit_hours">godziny</string>
     <string name="audio_cut_unit_minutes">minuty</string>

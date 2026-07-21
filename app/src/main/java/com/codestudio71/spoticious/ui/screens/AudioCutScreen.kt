@@ -21,6 +21,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -74,13 +76,14 @@ fun AudioCutScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
-    val positionMs by viewModel.positionMs.collectAsState()
     val fromMs by viewModel.fromMs.collectAsState()
     val toMs by viewModel.toMs.collectAsState()
     val segments by viewModel.segments.collectAsState()
     val exportingId by viewModel.exportingId.collectAsState()
     val selectedSegmentIds by viewModel.selectedSegmentIds.collectAsState()
     val merging by viewModel.merging.collectAsState()
+    val previewPlaying by viewModel.previewPlaying.collectAsState()
+    val previewPositionMs by viewModel.previewPositionMs.collectAsState()
 
     val filePicker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -170,13 +173,54 @@ fun AudioCutScreen(
 
                 StaticWaveform(
                     peaks = state.peaks,
-                    positionMs = positionMs,
                     fromMs = fromMs,
                     toMs = toMs,
-                    onScrub = viewModel::setPosition,
+                    onFromChange = viewModel::setFromMs,
+                    onToChange = viewModel::setToMs,
+                    playheadMs = if (previewPlaying) previewPositionMs else null,
                 )
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    IconButton(
+                        onClick = viewModel::togglePreview,
+                        enabled = fromMs < toMs,
+                        modifier = Modifier.size(44.dp),
+                    ) {
+                        Icon(
+                            imageVector =
+                                if (previewPlaying) {
+                                    Icons.Default.Pause
+                                } else {
+                                    Icons.Default.PlayArrow
+                                },
+                            contentDescription = stringResource(R.string.audio_cut_preview),
+                            tint = if (fromMs < toMs) MiamiCyan else Color.White.copy(alpha = 0.35f),
+                        )
+                    }
+                    Text(
+                        text =
+                            if (previewPlaying) {
+                                stringResource(
+                                    R.string.audio_cut_preview_playing,
+                                    formatStepperTimeHms(previewPositionMs),
+                                    formatStepperTimeHms(toMs),
+                                )
+                            } else {
+                                stringResource(R.string.audio_cut_preview_hint)
+                            },
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 12.sp,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+
+                Spacer(modifier.height(16.dp))
 
                 MiamiFrame(
                     modifier = Modifier.fillMaxWidth(),
@@ -289,6 +333,7 @@ fun AudioCutScreen(
                             isExporting = exportingId == segment.id,
                             exportCacheFile = segment.exportCacheFile,
                             selectedForMerge = segment.id in selectedSegmentIds,
+                            mergeOrder = selectedSegmentIds.indexOf(segment.id).let { if (it >= 0) it + 1 else null },
                             showMergeCheckbox = segments.size >= 2,
                             onToggleMergeSelect = { viewModel.toggleSegmentSelected(segment.id) },
                             onRename = { viewModel.renameSegment(segment.id, it) },
@@ -336,6 +381,7 @@ private fun SegmentRow(
     isExporting: Boolean,
     exportCacheFile: java.io.File?,
     selectedForMerge: Boolean,
+    mergeOrder: Int?,
     showMergeCheckbox: Boolean,
     onToggleMergeSelect: () -> Unit,
     onRename: (String) -> Unit,
@@ -361,6 +407,15 @@ private fun SegmentRow(
                             checkmarkColor = DarkOnCyan,
                         ),
                 )
+                if (mergeOrder != null) {
+                    Text(
+                        "$mergeOrder.",
+                        color = MiamiCyan,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(end = 6.dp),
+                    )
+                }
                 Text(
                     label,
                     color = Color.White,

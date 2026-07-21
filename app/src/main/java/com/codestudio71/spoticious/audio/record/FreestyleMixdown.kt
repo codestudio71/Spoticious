@@ -16,6 +16,9 @@ object FreestyleMixdown {
     const val VOCAL_GAIN = 0.9f
     const val BEAT_GAIN = 0.55f
 
+    /** Próg poniżej którego suma idzie 1:1; powyżej — miękkie ograniczanie (bez twardego clipu). */
+    private const val SOFT_LIMIT_THRESHOLD = 0.92f
+
     private const val WAV_HEADER_SIZE = 44
     private const val CHUNK_PCM_BYTES = 1_048_576
 
@@ -23,6 +26,7 @@ object FreestyleMixdown {
      * Nadpisuje [vocalWav] zmiksowanym mono PCM WAV (ten sam sample rate co nagranie).
      * @param beatStartOffsetMs beat wystartował później niż mikrofon o tyle ms —
      *   w miksie beat jest przesunięty w przód, żeby wokal i beat się nie rozjechały.
+     * Beat krótszy niż nagranie jest **zapętlany** (jak [BeatPreviewPlayer] REPEAT_MODE_ONE).
      * @return false przy błędzie odczytu wokalu lub dekodowania bitu.
      */
     fun mixInPlace(
@@ -41,19 +45,18 @@ object FreestyleMixdown {
             (beatStartOffsetMs.coerceAtLeast(0L) * rate / 1000L)
                 .coerceAtMost(info.frameCount.toLong())
                 .toInt()
-        val maxBeatSamples = (info.frameCount - beatOffsetSamples).coerceAtLeast(0)
 
+        // Pełny cykl beatu (cap ~12 min) — zapętlamy jak REPEAT_MODE_ONE w preview.
+        val maxBeatLoopSamples =
+            (rate.toLong() * 60L * 12L).coerceAtMost(Int.MAX_VALUE.toLong() / 4).toInt()
         val beatMono =
-            if (maxBeatSamples > 0) {
-                PcmStreamDecoder.decodeUriToMonoFloatLimited(
-                    context = context,
-                    uri = beatUri,
-                    targetSampleRate = rate,
-                    maxSamples = maxBeatSamples,
-                ) ?: return false
-            } else {
-                FloatArray(0)
-            }
+            PcmStreamDecoder.decodeUriToMonoFloatLimited(
+                context = context,
+                uri = beatUri,
+                targetSampleRate = rate,
+                maxSamples = maxBeatLoopSamples,
+            ) ?: return false
+        if (beatMono.isEmpty()) return false
 
         val temp = File(vocalWav.path + ".mix")
         val gain = beatGain.coerceIn(0f, 1f)
@@ -222,18 +225,38 @@ object FreestyleMixdown {
         beatGain: Float,
         bitsPerSample: Int,
     ): ByteArray {
+        val beatLen = beatMono.size
         val mixed = FloatArray(vocalMono.size)
         for (j in vocalMono.indices) {
             val i = globalFrameStart + j
             val v = vocalMono[j] * VOCAL_GAIN
             val bi = i - beatOffsetSamples
-            val b = if (bi in beatMono.indices) beatMono[bi] * beatGain else 0f
-            mixed[j] = (v + b).coerceIn(-1f, 1f)
+            val b =
+                when {
+                    beatLen <= 0 || bi < 0 -> 0f
+                    // Zapętlenie jak REPEAT_MODE_ONE w BeatPreviewPlayer
+                    else -> beatMono[bi % beatLen] * beatGain
+                }
+            mixed[j] = softLimit(v + b)
         }
         return when (bitsPerSample) {
             24 -> encode24(mixed)
             else -> encode16(mixed)
         }
+    }
+
+    /**
+     * Miękkie ograniczanie zamiast twardego coerceIn(-1,1) — mniej cyfrowego spłaszczenia
+     * przy głośnym wokalu + beacie.
+     */
+    private fun softLimit(x: Float): Float {
+        val ax = kotlin.math.abs(x)
+        if (ax <= SOFT_LIMIT_THRESHOLD) return x
+        val sign = if (x >= 0f) 1f else -1f
+        val excess = ax - SOFT_LIMIT_THRESHOLD
+        val room = 1f - SOFT_LIMIT_THRESHOLD
+        val shaped = SOFT_LIMIT_THRESHOLD + room * (excess / (excess + room))
+        return sign * shaped.coerceAtMost(1f)
     }
 
     private fun encode16(samples: FloatArray): ByteArray {

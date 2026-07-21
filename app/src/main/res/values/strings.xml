@@ -53,6 +53,7 @@
     <string name="record_choose_output">Choose output</string>
     <string name="record_add_beat">Add beat (audio file)</string>
     <string name="record_beat_volume">Beat volume</string>
+    <string name="record_beat_preview">Preview beat</string>
     <string name="record_save">Save to Music</string>
     <string name="record_share">Share</string>
     <string name="record_name_placeholder">Recording name</string>
@@ -100,9 +101,13 @@
     <string name="audio_cut_export_failed">Export failed</string>
     <string name="audio_cut_merge_segments">Merge selected</string>
     <string name="audio_cut_merge_default">Merged clip</string>
-    <string name="audio_cut_merge_hint">Select 2+ segments, then merge into one WAV.</string>
+    <string name="audio_cut_merge_hint">Select 2+ segments in merge order (1, 2, 3…), then merge into one WAV.</string>
+    <string name="audio_cut_preview">Preview selection</string>
+    <string name="audio_cut_preview_hint">Play Od–Do range before export</string>
+    <string name="audio_cut_preview_playing">Preview %1$s / %2$s</string>
     <string name="audio_cut_merging">Merging…</string>
     <string name="audio_cut_waveform">Waveform</string>
+    <string name="audio_cut_waveform_hint">Drag cyan (start) / pink (end) markers</string>
     <string name="audio_cut_edit_unit_title">Set %1$s</string>
     <string name="audio_cut_unit_hours">hours</string>
     <string name="audio_cut_unit_minutes">minutes</string>

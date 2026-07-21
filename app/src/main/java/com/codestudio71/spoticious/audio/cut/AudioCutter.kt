@@ -44,14 +44,14 @@ class AudioCutter {
     ): Boolean =
         withContext(Dispatchers.IO) {
             if (windows.size < 2) return@withContext false
-            val sorted = windows.sortedBy { it.first }
             WavStreamWriter(
                 file = outFile,
                 sampleRate = sampleRate,
                 bitsPerSample = PcmStreamDecoder.EXPORT_BITS_PER_SAMPLE,
                 numChannels = channelCount.coerceAtLeast(1),
             ).use { writer ->
-                for ((startMs, endMs) in sorted) {
+                // Kolejność = kolejność listy (zaznaczenia), bez sortowania po czasie
+                for ((startMs, endMs) in windows) {
                     if (endMs <= startMs) return@withContext false
                     if (!PcmStreamDecoder.exportWindow(context, sourceUri, startMs, endMs, writer)) {
                         return@withContext false
