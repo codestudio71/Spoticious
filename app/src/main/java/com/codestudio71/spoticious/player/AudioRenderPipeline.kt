@@ -18,18 +18,10 @@ import java.io.File
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.math.sqrt
 
 enum class OutputFormat { AAC, WAV }
 
 object AudioRenderPipeline {
-
-    private const val Q = 1.41
-    private val BAND_FREQUENCIES_HZ = intArrayOf(
-        31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000
-    )
 
     suspend fun render(
         context: Context,
@@ -72,9 +64,15 @@ object AudioRenderPipeline {
             if (!isActive) return@withContext Result.failure(Exception("Cancelled"))
             if (pcmFloat.isEmpty()) return@withContext Result.failure(Exception("No audio data decoded"))
 
-            val preampMult = Math.pow(10.0, (preampDb / 20.0).toDouble()).toFloat()
-            val eqFilters = buildEqFilters(sourceSampleRate, channelCount, eqBands)
-            applyEq(pcmFloat, channelCount, preampMult, eqFilters)
+            // Ten sam silnik co odsłuch (Audacious bp2) — bez osobnego peaking / osobnego preamp×.
+            val eq = AudaciousEqEngine()
+            eq.configure(sourceSampleRate, channelCount)
+            eq.setGains(preampDb, eqBands)
+            eq.resetState()
+            eq.processInterleavedInPlace(pcmFloat)
+            for (i in pcmFloat.indices) {
+                pcmFloat[i] = pcmFloat[i].coerceIn(-1f, 1f)
+            }
             if (isActive) onProgress(0.75f, context.getString(R.string.render_phase_eq_applied))
 
             if (isActive) onProgress(0.76f, context.getString(R.string.render_phase_encoding))
@@ -97,92 +95,6 @@ object AudioRenderPipeline {
             Result.success(outputUri)
         } catch (e: Exception) {
             Result.failure(e)
-        }
-    }
-
-    private class BiquadFilter {
-        var b0 = 1.0
-        var b1 = 0.0
-        var b2 = 0.0
-        var a1 = 0.0
-        var a2 = 0.0
-        private var x1 = 0.0
-        private var x2 = 0.0
-        private var y1 = 0.0
-        private var y2 = 0.0
-
-        fun process(x0: Double): Double {
-            val y0 = b0 * x0 + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
-            x2 = x1
-            x1 = x0
-            y2 = y1
-            y1 = y0
-            return y0
-        }
-
-        fun reset() {
-            x1 = 0.0
-            x2 = 0.0
-            y1 = 0.0
-            y2 = 0.0
-        }
-    }
-
-    private fun buildEqFilters(
-        sampleRate: Int,
-        channelCount: Int,
-        eqBands: FloatArray
-    ): Array<Array<BiquadFilter>> {
-        val filters = Array(10) { bandIdx ->
-            Array(channelCount) { BiquadFilter() }.also { chFilters ->
-                val gainDb = eqBands.getOrElse(bandIdx) { 0f }.toDouble().coerceIn(-15.0, 15.0)
-                val freq = BAND_FREQUENCIES_HZ[bandIdx].toDouble()
-                val a = sqrt(Math.pow(10.0, gainDb / 20.0))
-                val w0 = 2.0 * Math.PI * freq / sampleRate
-                val alpha = sin(w0) / (2.0 * Q)
-                var b0 = 1.0 + alpha * a
-                val b1 = -2.0 * cos(w0)
-                var b2 = 1.0 - alpha * a
-                var a0 = 1.0 + alpha / a
-                val a1 = -2.0 * cos(w0)
-                var a2 = 1.0 - alpha / a
-                b0 /= a0
-                val b1n = b1 / a0
-                b2 /= a0
-                val a1n = a1 / a0
-                val a2n = a2 / a0
-                for (ch in 0 until channelCount) {
-                    chFilters[ch].b0 = b0
-                    chFilters[ch].b1 = b1n
-                    chFilters[ch].b2 = b2
-                    chFilters[ch].a1 = a1n
-                    chFilters[ch].a2 = a2n
-                }
-            }
-        }
-        return filters
-    }
-
-    private fun applyEq(
-        samples: FloatArray,
-        channelCount: Int,
-        preampMult: Float,
-        filters: Array<Array<BiquadFilter>>
-    ) {
-        for (bandIdx in 0 until 10) {
-            for (ch in 0 until channelCount) {
-                filters[bandIdx][ch].reset()
-            }
-        }
-        var i = 0
-        while (i < samples.size) {
-            var sample = samples[i] * preampMult
-            val ch = i % channelCount
-            for (bandIdx in 0 until 10) {
-                sample = filters[bandIdx][ch].process(sample.toDouble()).toFloat()
-            }
-            samples[i] = sample.coerceIn(-1f, 1f)
-            i++
         }
     }
 
