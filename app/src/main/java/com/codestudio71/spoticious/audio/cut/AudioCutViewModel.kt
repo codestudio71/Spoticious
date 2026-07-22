@@ -259,12 +259,14 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
     fun export(
         context: Context,
         id: Long,
+        label: String? = null,
         onSaved: (String) -> Unit,
         onError: () -> Unit,
     ) {
         val state = _uiState.value as? CutUiState.Ready ?: return
         val segment = _segments.value.firstOrNull { it.id == id } ?: return
         if (_exportingId.value != null) return
+        val fileLabel = label?.trim()?.takeIf { it.isNotEmpty() } ?: segment.label
 
         stopPreview()
         viewModelScope.launch {
@@ -272,7 +274,7 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
             val outFile =
                 cutter.buildOutputFile(
                     context.filesDir,
-                    segment.label,
+                    fileLabel,
                 )
             val ok =
                 cutter.exportSegment(
@@ -290,7 +292,7 @@ class AudioCutViewModel(application: Application) : AndroidViewModel(application
                 onError()
                 return@launch
             }
-            val displayName = WavMusicExporter.sanitizeFileName(segment.label)
+            val displayName = WavMusicExporter.sanitizeFileName(fileLabel)
             val savedUri =
                 WavMusicExporter.saveToMusic(
                     context.contentResolver,

@@ -353,8 +353,9 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /**
-     * Suwak: aktualizuje gain + meter od razu, **bez** ExoPlayer.volume.
-     * Ciągłe setVolume = trzaski w wyjściu → brudny mic. Volume: [commitBeatGain].
+     * Suwak: aktualizuje gain + meter od razu. Poza REC volume idzie na playera dopiero
+     * w [commitBeatGain] (ciągłe setVolume przy dragu = trzaski). Podczas REC
+     * [RecordingSession] sam aplikuje volume live (throttling) + zapisuje automatykę do miksu.
      */
     fun setBeatGain(value: Float) {
         val g = value.coerceIn(0f, 1f)

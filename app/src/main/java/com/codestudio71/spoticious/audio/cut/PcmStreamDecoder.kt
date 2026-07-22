@@ -94,6 +94,159 @@ object PcmStreamDecoder {
     }
 
     /**
+     * Dekoduje audio strumieniowo do mono float w [targetSampleRate], podając próbki
+     * chunkami przez [onSamples] (bufor reużywany — konsumuj przed powrotem). Nic nie trzyma
+     * całości w RAM — użycie: mixdown freestyle (beat → plik tymczasowy PCM).
+     *
+     * @param maxSamples twardy limit wyemitowanych próbek (po resamplingu).
+     * @return liczba wyemitowanych próbek albo -1 przy błędzie otwarcia/dekodowania.
+     */
+    fun decodeUriToMonoStreaming(
+        context: Context,
+        uri: Uri,
+        targetSampleRate: Int,
+        maxSamples: Long,
+        onSamples: (samples: FloatArray, count: Int) -> Unit,
+    ): Long {
+        if (maxSamples <= 0L) return 0L
+        var session: DecodeSession? = null
+        return try {
+            session = openSession(context, uri) ?: return -1L
+            val resampler =
+                StreamingMonoResampler(
+                    dstRate = targetSampleRate.coerceAtLeast(1),
+                    maxSamples = maxSamples,
+                    onSamples = onSamples,
+                )
+            var monoBuf = FloatArray(0)
+
+            session.decodeStreaming(
+                shouldStop = { resampler.done },
+                onChunk = { chunk, _, channels, rate, pcmEncoding ->
+                    if (resampler.done) return@decodeStreaming
+                    resampler.setSrcRate(rate)
+                    val ch = channels.coerceAtLeast(1)
+                    val bps = bytesPerSample(pcmEncoding)
+                    val frames = chunk.size / bps / ch
+                    if (frames <= 0) return@decodeStreaming
+                    if (monoBuf.size < frames) monoBuf = FloatArray(frames)
+
+                    var byteIndex = 0
+                    for (f in 0 until frames) {
+                        var mono = 0f
+                        for (c in 0 until ch) {
+                            mono += readSampleFloat(chunk, byteIndex, pcmEncoding)
+                            byteIndex += bps
+                        }
+                        monoBuf[f] = mono / ch
+                    }
+                    resampler.push(monoBuf, frames)
+                },
+            )
+            resampler.flush()
+            resampler.emitted
+        } catch (_: Exception) {
+            -1L
+        } finally {
+            session?.release()
+        }
+    }
+
+    /**
+     * Liniowy resampler strumieniowy mono — trzyma jedną próbkę historii między chunkami,
+     * więc wynik na granicach chunków jest identyczny jak przy resamplingu całości naraz.
+     */
+    private class StreamingMonoResampler(
+        private val dstRate: Int,
+        private val maxSamples: Long,
+        private val onSamples: (FloatArray, Int) -> Unit,
+    ) {
+        var emitted = 0L
+            private set
+
+        val done: Boolean
+            get() = emitted >= maxSamples
+
+        private var srcRate = dstRate
+        private var srcConsumed = 0L
+        private var prevSample = 0f
+        private var hasAny = false
+        private val outBuf = FloatArray(8192)
+
+        /** Realny sample rate znany dopiero z pierwszego chunku dekodera. */
+        fun setSrcRate(rate: Int) {
+            if (srcConsumed == 0L && rate > 0) srcRate = rate
+        }
+
+        fun push(mono: FloatArray, n: Int) {
+            if (n <= 0 || done) return
+            hasAny = true
+
+            if (srcRate == dstRate) {
+                var i = 0
+                while (i < n && !done) {
+                    val span =
+                        minOf((n - i).toLong(), maxSamples - emitted, outBuf.size.toLong())
+                            .toInt()
+                    System.arraycopy(mono, i, outBuf, 0, span)
+                    onSamples(outBuf, span)
+                    emitted += span
+                    i += span
+                }
+                prevSample = mono[n - 1]
+                srcConsumed += n
+                return
+            }
+
+            val lastGlobal = srcConsumed + n - 1
+            var count = 0
+            while (!done) {
+                val pos = emitted.toDouble() * srcRate / dstRate
+                val idx = pos.toLong()
+                if (idx + 1 > lastGlobal) break
+                val frac = (pos - idx).toFloat()
+                val s0 = sampleAt(idx, mono)
+                val s1 = sampleAt(idx + 1, mono)
+                outBuf[count++] = s0 * (1f - frac) + s1 * frac
+                emitted++
+                if (count == outBuf.size) {
+                    onSamples(outBuf, count)
+                    count = 0
+                }
+            }
+            if (count > 0) onSamples(outBuf, count)
+            prevSample = mono[n - 1]
+            srcConsumed += n
+        }
+
+        /** Po EOS: domknij ogon, dla którego brakowało próbki idx+1 (clamp do ostatniej). */
+        fun flush() {
+            if (!hasAny || srcRate == dstRate) return
+            var count = 0
+            while (!done) {
+                val idx = (emitted.toDouble() * srcRate / dstRate).toLong()
+                if (idx > srcConsumed - 1) break
+                outBuf[count++] = prevSample
+                emitted++
+                if (count == outBuf.size) {
+                    onSamples(outBuf, count)
+                    count = 0
+                }
+            }
+            if (count > 0) onSamples(outBuf, count)
+        }
+
+        private fun sampleAt(globalIdx: Long, mono: FloatArray): Float =
+            if (globalIdx >= srcConsumed) {
+                mono[(globalIdx - srcConsumed).toInt()]
+            } else {
+                // Emitujemy zawsze maksimum możliwych wyjść, więc tu może być tylko
+                // ostatnia próbka poprzedniego chunku (granica interpolacji).
+                prevSample
+            }
+    }
+
+    /**
      * Szacunek peak dBFS pliku (pierwsze [probeSeconds] albo cały krótki plik).
      * Do UI metra BEAT: wyświetlane ≈ peak + 20·log10(gain).
      */

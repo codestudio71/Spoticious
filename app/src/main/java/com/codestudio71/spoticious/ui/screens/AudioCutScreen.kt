@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -37,6 +38,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -68,6 +70,12 @@ import java.io.File
 
 private val DarkOnCyan = Color(0xFF0D0D1A)
 
+/** Export/merge name dialog: null = closed; segmentId null = merge. */
+private data class PendingExportName(
+    val segmentId: Long?,
+    val draft: String,
+)
+
 @Composable
 fun AudioCutScreen(
     onBack: () -> Unit,
@@ -84,6 +92,7 @@ fun AudioCutScreen(
     val merging by viewModel.merging.collectAsState()
     val previewPlaying by viewModel.previewPlaying.collectAsState()
     val previewPositionMs by viewModel.previewPositionMs.collectAsState()
+    var pendingExportName by remember { mutableStateOf<PendingExportName?>(null) }
 
     val filePicker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -92,6 +101,101 @@ fun AudioCutScreen(
                 viewModel.loadFile(context, uri, name)
             }
         }
+
+    pendingExportName?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { pendingExportName = null },
+            title = {
+                Text(
+                    stringResource(R.string.audio_cut_export_name_title),
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                OutlinedTextField(
+                    value = pending.draft,
+                    onValueChange = { pendingExportName = pending.copy(draft = it) },
+                    singleLine = true,
+                    label = {
+                        Text(stringResource(R.string.audio_cut_export_name_hint), color = Color.White.copy(alpha = 0.6f))
+                    },
+                    colors =
+                        OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = MiamiCyan,
+                            unfocusedBorderColor = MiamiCyan.copy(alpha = 0.5f),
+                            cursorColor = MiamiCyan,
+                            focusedLabelColor = MiamiCyan,
+                            unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
+                        ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val label = pending.draft.trim().ifBlank { pending.draft }
+                        val id = pending.segmentId
+                        pendingExportName = null
+                        if (id == null) {
+                            viewModel.exportMerged(
+                                context = context,
+                                label = label.ifBlank { context.getString(R.string.audio_cut_merge_default) },
+                                onSaved = { name ->
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            context.getString(R.string.record_saved_named, name),
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                },
+                                onError = {
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            context.getString(R.string.audio_cut_export_failed),
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                },
+                            )
+                        } else {
+                            viewModel.export(
+                                context = context,
+                                id = id,
+                                label = label.takeIf { it.isNotBlank() },
+                                onSaved = { name ->
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            context.getString(R.string.record_saved_named, name),
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                },
+                                onError = {
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            context.getString(R.string.audio_cut_export_failed),
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                },
+                            )
+                        }
+                    },
+                ) {
+                    Text(stringResource(R.string.audio_cut_save), color = MiamiCyan, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingExportName = null }) {
+                    Text(stringResource(R.string.cancel), color = Color.White.copy(alpha = 0.7f))
+                }
+            },
+            containerColor = Color(0xFF1A0A2E),
+        )
+    }
 
     Column(
         modifier =
@@ -282,26 +386,11 @@ fun AudioCutScreen(
                         Spacer(Modifier.height(8.dp))
                         OutlinedButton(
                             onClick = {
-                                viewModel.exportMerged(
-                                    context = context,
-                                    label = context.getString(R.string.audio_cut_merge_default),
-                                    onSaved = { name ->
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                context.getString(R.string.record_saved_named, name),
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
-                                    },
-                                    onError = {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                context.getString(R.string.audio_cut_export_failed),
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
-                                    },
-                                )
+                                pendingExportName =
+                                    PendingExportName(
+                                        segmentId = null,
+                                        draft = context.getString(R.string.audio_cut_merge_default),
+                                    )
                             },
                             modifier = Modifier.fillMaxWidth(),
                             enabled = selectedSegmentIds.size >= 2 && !merging && exportingId == null,
@@ -338,26 +427,11 @@ fun AudioCutScreen(
                             onToggleMergeSelect = { viewModel.toggleSegmentSelected(segment.id) },
                             onRename = { viewModel.renameSegment(segment.id, it) },
                             onExport = {
-                                viewModel.export(
-                                    context = context,
-                                    id = segment.id,
-                                    onSaved = { name ->
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                context.getString(R.string.record_saved_named, name),
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
-                                    },
-                                    onError = {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                context.getString(R.string.audio_cut_export_failed),
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
-                                    },
-                                )
+                                pendingExportName =
+                                    PendingExportName(
+                                        segmentId = segment.id,
+                                        draft = segment.label,
+                                    )
                             },
                             onShare = { file -> shareWav(context, file) },
                             onDelete = { viewModel.removeSegment(segment.id) },

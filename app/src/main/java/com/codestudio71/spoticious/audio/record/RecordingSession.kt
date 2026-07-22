@@ -67,6 +67,16 @@ object RecordingSession {
     @Volatile
     private var beatStartOffsetMs = 0L
 
+    /** Ruchy suwaka BEAT podczas REC (czas względem startu mikrofonu) — do miksu. */
+    private val beatGainAutomation = mutableListOf<FreestyleMixdown.GainEvent>()
+    private val automationLock = Any()
+
+    /** Ostatni live [ExoPlayer.setVolume] przy REC — throttling anty-zipper przy dragu. */
+    @Volatile
+    private var lastLiveVolumeApplyMs = 0L
+
+    private const val LIVE_VOLUME_THROTTLE_MS = 50L
+
     /** Główny player był w trakcie odtwarzania — wznów po STOP nagrania. */
     private var resumeMainPlaybackAfterRecording = false
 
@@ -105,18 +115,48 @@ object RecordingSession {
         beatPreviewPlayer.clear()
     }
 
-    /** Suwak 0..1 w stanie (UI %). Na player/mix: [FreestyleMixdown.sliderToLinearGain]. */
+    /**
+     * Suwak 0..1 w stanie (UI %). Na player/mix: [FreestyleMixdown.sliderToLinearGain].
+     * Podczas REC: volume idzie na playera live (throttling [LIVE_VOLUME_THROTTLE_MS]),
+     * a każdy ruch trafia do automatyki, żeby finalny mix brzmiał jak monitoring.
+     */
     fun setBeatGain(value: Float, applyToPlayer: Boolean = true) {
         val g = value.coerceIn(0f, 1f)
         _beatGain.value = g
-        if (applyToPlayer) {
+        val recording = recordingState.value is RecordingState.Recording
+        if (recording) {
+            recordGainAutomationEvent(g)
+            val now = SystemClock.elapsedRealtime()
+            if (applyToPlayer || now - lastLiveVolumeApplyMs >= LIVE_VOLUME_THROTTLE_MS) {
+                beatPreviewPlayer.setVolume(FreestyleMixdown.sliderToLinearGain(g))
+                lastLiveVolumeApplyMs = now
+            }
+        } else if (applyToPlayer) {
             beatPreviewPlayer.setVolume(FreestyleMixdown.sliderToLinearGain(g))
         }
     }
 
-    /** Po puszczeniu suwaka — jednorazowe [ExoPlayer.setVolume]. */
+    /** Po puszczeniu suwaka — jednorazowe [ExoPlayer.setVolume] (dokładna wartość końcowa). */
     fun applyBeatGainToPlayer() {
-        beatPreviewPlayer.setVolume(FreestyleMixdown.sliderToLinearGain(_beatGain.value))
+        val g = _beatGain.value
+        beatPreviewPlayer.setVolume(FreestyleMixdown.sliderToLinearGain(g))
+        if (recordingState.value is RecordingState.Recording) {
+            recordGainAutomationEvent(g)
+        }
+    }
+
+    private fun recordGainAutomationEvent(sliderValue: Float) {
+        val captureStart = vocalRecorder.captureStartElapsedMs
+        if (captureStart <= 0L) return
+        val t = (SystemClock.elapsedRealtime() - captureStart).coerceAtLeast(0L)
+        synchronized(automationLock) {
+            beatGainAutomation.add(
+                FreestyleMixdown.GainEvent(
+                    timeMs = t,
+                    linearGain = FreestyleMixdown.sliderToLinearGain(sliderValue),
+                ),
+            )
+        }
     }
 
     /**
@@ -166,6 +206,15 @@ object RecordingSession {
         pauseMainPlaybackForRecording()
 
         beatStartOffsetMs = 0L
+        synchronized(automationLock) {
+            beatGainAutomation.clear()
+            beatGainAutomation.add(
+                FreestyleMixdown.GainEvent(
+                    timeMs = 0L,
+                    linearGain = FreestyleMixdown.sliderToLinearGain(_beatGain.value),
+                ),
+            )
+        }
         if (freestyleWithBeat) {
             val beatUri = _selectedBeatUri.value
             if (beatUri != null) {
@@ -232,15 +281,17 @@ object RecordingSession {
                         }
                     }
                 if (vocalFile != null && needsMix && beatUri != null) {
+                    val automationSnapshot =
+                        synchronized(automationLock) { beatGainAutomation.toList() }
                     val mixed =
                         withContext(Dispatchers.IO) {
                             FreestyleMixdown.mixInPlace(
                                 context = appContext,
                                 vocalWav = vocalFile,
                                 beatUri = beatUri,
-                                targetSampleRate = SAMPLE_RATE_DEFAULT,
                                 beatGain = FreestyleMixdown.sliderToLinearGain(_beatGain.value),
                                 beatStartOffsetMs = beatStartOffsetMs,
+                                beatGainAutomation = automationSnapshot,
                             )
                         }
                     if (!mixed) {

@@ -97,6 +97,8 @@
     <string name="audio_cut_segment_name">Nazwa</string>
     <string name="audio_cut_segment_default">Fragment %1$d</string>
     <string name="audio_cut_export">Eksportuj</string>
+    <string name="audio_cut_export_name_title">Nazwa pliku</string>
+    <string name="audio_cut_export_name_hint">Nazwa bez rozszerzenia</string>
     <string name="audio_cut_export_failed">Eksport nie powiódł się</string>
     <string name="audio_cut_merge_segments">Połącz fragmenty</string>
     <string name="audio_cut_merge_default">Połączony fragment</string>

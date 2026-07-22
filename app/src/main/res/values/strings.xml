@@ -98,6 +98,8 @@
     <string name="audio_cut_segment_name">Name</string>
     <string name="audio_cut_segment_default">Clip %1$d</string>
     <string name="audio_cut_export">Export</string>
+    <string name="audio_cut_export_name_title">File name</string>
+    <string name="audio_cut_export_name_hint">Name without extension</string>
     <string name="audio_cut_export_failed">Export failed</string>
     <string name="audio_cut_merge_segments">Merge selected</string>
     <string name="audio_cut_merge_default">Merged clip</string>

@@ -485,7 +485,9 @@ fun RecordPreviewScreen(
                             },
                             valueRange = 0f..1f,
                             modifier = Modifier.weight(1f),
-                            enabled = !beatUiLocked,
+                            // Live regulacja także w trakcie REC (automatyka gainu w miksie);
+                            // blokada tylko podczas Stopping/miksowania.
+                            enabled = !isBusy,
                             colors =
                                 SliderDefaults.colors(
                                     thumbColor = Color(0xFFFF4DB8),

@@ -68,10 +68,16 @@ import com.codestudio71.spoticious.folders.TrackSortOrder
 import com.codestudio71.spoticious.player.PlayerViewModel
 import com.codestudio71.spoticious.player.RenderViewModel
 import com.codestudio71.spoticious.ui.components.MiniPlayer
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.DpOffset
+import com.codestudio71.spoticious.ui.theme.MiamiMenuShape
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
 import com.codestudio71.spoticious.ui.theme.MiamiGradientColors
 import com.codestudio71.spoticious.ui.theme.MiamiPink
-import com.codestudio71.spoticious.ui.theme.miamiMenuSurface
+
+/** Nieprzezroczyste tło menu sortowania — bez prześwitu tytułów z listy. */
+private val SortMenuFill = Color(0xFF1A0A2E)
 
 enum class Tab(
     val titleResId: Int,
@@ -412,7 +418,7 @@ private fun MainTopBar(
                         modifier =
                             Modifier
                                 .weight(1f)
-                                .padding(end = 8.dp)
+                                .padding(end = 44.dp)
                                 .background(
                                     MiamiCyan.copy(alpha = 0.15f),
                                     RoundedCornerShape(8.dp),
@@ -453,16 +459,18 @@ private fun MainTopBar(
                             )
                         }
                     }
-                    SortShelvesButton(
-                        sortMode = sortMode,
-                        onSortModeChange = onSortModeChange,
-                        sortMenuExpanded = sortMenuExpanded,
-                        onSortMenuExpandedChange = onSortMenuExpandedChange,
-                        showTrackNumbers = showTrackNumbers,
-                        onShowTrackNumbersChange = onShowTrackNumbersChange,
-                        showTrackNumberingToggle = selectedTab == Tab.UTWORY,
-                    )
                 }
+                // 3 kreski zawsze na środku belki (nie przyklejone do prawej przy search).
+                SortShelvesButton(
+                    sortMode = sortMode,
+                    onSortModeChange = onSortModeChange,
+                    sortMenuExpanded = sortMenuExpanded,
+                    onSortMenuExpandedChange = onSortMenuExpandedChange,
+                    showTrackNumbers = showTrackNumbers,
+                    onShowTrackNumbersChange = onShowTrackNumbersChange,
+                    showTrackNumberingToggle = selectedTab == Tab.UTWORY,
+                    modifier = Modifier.align(Alignment.Center),
+                )
             } else {
                 Text(
                     text = stringResource(R.string.search),
@@ -530,7 +538,13 @@ private fun SortShelvesButton(
         DropdownMenu(
             expanded = sortMenuExpanded,
             onDismissRequest = { onSortMenuExpandedChange(false) },
-            modifier = Modifier.miamiMenuSurface(),
+            offset = DpOffset(x = 0.dp, y = 6.dp),
+            modifier =
+                Modifier
+                    .widthIn(min = 260.dp, max = 320.dp)
+                    .clip(MiamiMenuShape)
+                    .background(SortMenuFill, MiamiMenuShape)
+                    .border(1.dp, MiamiCyan.copy(alpha = 0.85f), MiamiMenuShape),
             containerColor = Color.Transparent,
             tonalElevation = 0.dp,
             shadowElevation = 8.dp,
