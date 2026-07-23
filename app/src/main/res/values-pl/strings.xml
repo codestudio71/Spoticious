@@ -181,12 +181,12 @@
     <string name="master_data_header_lra">LRA</string>
     <string name="master_data_glossary_title">Co znaczą te liczby?</string>
     <string name="master_data_glossary_peak">Peak — najgłośniejszy pojedynczy moment utworu. 0.0 dB to sufit: wszystko powyżej zostaje ścięte (przester).</string>
-    <string name="master_data_glossary_clips">Clips — ile razy sygnał uderzył w sufit i został ścięty. 0 = czysto; duża liczba = słyszalny przester.</string>
-    <string name="master_data_glossary_lufs_m">LUFS-M (Momentary) — głośność w tej chwili, mierzona z ostatnich 0,4 s. Skacze razem z muzyką.</string>
-    <string name="master_data_glossary_lufs_s">LUFS-S (Short-term) — głośność ostatnich 3 s. Spokojniejszy niż Momentary.</string>
+    <string name="master_data_glossary_clips">Clips — ile razy sygnał został cyfrowo ścięty na pełnej skali (płaski szczyt, jak w statystykach renderu DAW). 0 = czysty master; liczba &gt; 0 = realny przester. Samo dotknięcie 0 dBFS przez limiter to nie clip.</string>
+    <string name="master_data_glossary_lufs_m">LUFS-M (Momentary, max) — najgłośniejsze 0,4 sekundy znalezione w całym utworze. Pokazuje, jak mocno uderza najintensywniejszy moment (to samo co „MAX momentary” w statystykach renderu DAW — to nie jest miernik na żywo).</string>
+    <string name="master_data_glossary_lufs_s">LUFS-S (Short-term, max) — najgłośniejszy 3-sekundowy fragment utworu, np. najmocniejszy refren albo drop (to samo co „MAX short-term” w statystykach renderu DAW).</string>
     <string name="master_data_glossary_lufs_i">LUFS-I (Integrated) — średnia głośność całego utworu. Na tę liczbę patrzą platformy streamingowe: Spotify i YouTube normalizują do ok. -14, Apple Music do ok. -16. Głośniejsze mastery są ściszane.</string>
     <string name="master_data_glossary_lra">LRA — rozpiętość dynamiki w LU: różnica między cichymi i głośnymi fragmentami. Mało (2-5) = gęsto, mocno skompresowane; dużo (8+) = duże wahania dynamiki.</string>
-    <string name="master_data_clips_unavailable">* Wykrywanie clipów niedostępne dla tego formatu (Opus/WebM).</string>
+    <string name="master_data_clips_unavailable">* Dla tego formatu nie da się wiarygodnie policzyć clipów na tym urządzeniu — zamiast fałszywej liczby pokazujemy *. Pozostałe wartości (Peak, LUFS, LRA) są mierzone normalnie.</string>
     <string name="shuffle">Losowo</string>
     <string name="previous">Poprzedni</string>
     <string name="next">Następny</string>

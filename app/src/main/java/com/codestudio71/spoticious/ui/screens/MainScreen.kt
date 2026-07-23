@@ -27,7 +27,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -68,16 +67,18 @@ import com.codestudio71.spoticious.folders.TrackSortOrder
 import com.codestudio71.spoticious.player.PlayerViewModel
 import com.codestudio71.spoticious.player.RenderViewModel
 import com.codestudio71.spoticious.ui.components.MiniPlayer
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import com.codestudio71.spoticious.ui.theme.MiamiMenuShape
 import com.codestudio71.spoticious.ui.theme.MiamiCyan
 import com.codestudio71.spoticious.ui.theme.MiamiGradientColors
 import com.codestudio71.spoticious.ui.theme.MiamiPink
 
-/** Nieprzezroczyste tło menu sortowania — bez prześwitu tytułów z listy. */
-private val SortMenuFill = Color(0xFF1A0A2E)
+/** Pełne krycie — bez prześwitu listy. */
+private val SortMenuFill = Color(0xFF0D0D1A)
 
 enum class Tab(
     val titleResId: Int,
@@ -516,7 +517,10 @@ private fun SortShelvesButton(
         )
     val shelfShape = RoundedCornerShape(2.dp)
 
-    Box(modifier = modifier) {
+    val density = LocalDensity.current
+    val popupY = with(density) { 40.dp.roundToPx() }
+
+    Box(modifier = modifier, contentAlignment = Alignment.TopCenter) {
         Column(
             modifier =
                 Modifier
@@ -535,76 +539,81 @@ private fun SortShelvesButton(
                 )
             }
         }
-        DropdownMenu(
-            expanded = sortMenuExpanded,
-            onDismissRequest = { onSortMenuExpandedChange(false) },
-            offset = DpOffset(x = 0.dp, y = 6.dp),
-            modifier =
-                Modifier
-                    .widthIn(min = 260.dp, max = 320.dp)
-                    .clip(MiamiMenuShape)
-                    .background(SortMenuFill, MiamiMenuShape)
-                    .border(1.dp, MiamiCyan.copy(alpha = 0.85f), MiamiMenuShape),
-            containerColor = Color.Transparent,
-            tonalElevation = 0.dp,
-            shadowElevation = 8.dp,
-        ) {
-            Text(
-                text = stringResource(R.string.sort_by),
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 12.sp,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-            TrackSortOrder.entries.forEach { order ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = when (order) {
-                                TrackSortOrder.NAME_ASC -> stringResource(R.string.sort_title_asc)
-                                TrackSortOrder.NAME_DESC -> stringResource(R.string.sort_title_desc)
-                                TrackSortOrder.DURATION_ASC -> stringResource(R.string.sort_duration_asc)
-                                TrackSortOrder.DURATION_DESC -> stringResource(R.string.sort_duration_desc)
-                                TrackSortOrder.DATE_ADDED_ASC -> stringResource(R.string.sort_date_asc)
-                                TrackSortOrder.DATE_ADDED_DESC -> stringResource(R.string.sort_date_desc)
-                            },
-                            color = if (sortMode == order) MiamiCyan else Color.White
-                        )
-                    },
-                    onClick = {
-                        onSortModeChange(order)
-                        onSortMenuExpandedChange(false)
-                    }
-                )
-            }
-            if (showTrackNumberingToggle) {
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 4.dp),
-                    color = Color.White.copy(alpha = 0.12f),
-                )
-                Row(
+        if (sortMenuExpanded) {
+            Popup(
+                alignment = Alignment.TopCenter,
+                offset = IntOffset(0, popupY),
+                onDismissRequest = { onSortMenuExpandedChange(false) },
+                properties = PopupProperties(focusable = true),
+            ) {
+                Column(
                     modifier =
                         Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+                            .width(280.dp)
+                            .clip(MiamiMenuShape)
+                            .background(SortMenuFill)
+                            .border(1.dp, MiamiCyan.copy(alpha = 0.85f), MiamiMenuShape)
+                            .padding(vertical = 8.dp),
                 ) {
                     Text(
-                        text = stringResource(R.string.track_numbering),
-                        color = Color.White,
-                        fontSize = 14.sp,
+                        text = stringResource(R.string.sort_by),
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
-                    Switch(
-                        checked = showTrackNumbers,
-                        onCheckedChange = onShowTrackNumbersChange,
-                        colors =
-                            SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = MiamiCyan,
-                                uncheckedThumbColor = Color.White.copy(alpha = 0.85f),
-                                uncheckedTrackColor = Color.White.copy(alpha = 0.25f),
-                            ),
-                    )
+                    TrackSortOrder.entries.forEach { order ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text =
+                                        when (order) {
+                                            TrackSortOrder.NAME_ASC -> stringResource(R.string.sort_title_asc)
+                                            TrackSortOrder.NAME_DESC -> stringResource(R.string.sort_title_desc)
+                                            TrackSortOrder.DURATION_ASC -> stringResource(R.string.sort_duration_asc)
+                                            TrackSortOrder.DURATION_DESC -> stringResource(R.string.sort_duration_desc)
+                                            TrackSortOrder.DATE_ADDED_ASC -> stringResource(R.string.sort_date_asc)
+                                            TrackSortOrder.DATE_ADDED_DESC -> stringResource(R.string.sort_date_desc)
+                                        },
+                                    color = if (sortMode == order) MiamiCyan else Color.White,
+                                )
+                            },
+                            onClick = {
+                                onSortModeChange(order)
+                                onSortMenuExpandedChange(false)
+                            },
+                        )
+                    }
+                    if (showTrackNumberingToggle) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            color = Color.White.copy(alpha = 0.12f),
+                        )
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.track_numbering),
+                                color = Color.White,
+                                fontSize = 14.sp,
+                            )
+                            Switch(
+                                checked = showTrackNumbers,
+                                onCheckedChange = onShowTrackNumbersChange,
+                                colors =
+                                    SwitchDefaults.colors(
+                                        checkedThumbColor = Color.White,
+                                        checkedTrackColor = MiamiCyan,
+                                        uncheckedThumbColor = Color.White.copy(alpha = 0.85f),
+                                        uncheckedTrackColor = Color.White.copy(alpha = 0.25f),
+                                    ),
+                            )
+                        }
+                    }
                 }
             }
         }

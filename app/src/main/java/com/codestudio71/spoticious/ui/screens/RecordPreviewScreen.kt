@@ -740,6 +740,8 @@ fun RecordPreviewScreen(
                     Button(
                         onClick = { viewModel.saveRecordingToMusicWithBaseName(recordingName) },
                         modifier = Modifier.weight(1f),
+                        // Mix po STOP jeszcze mieli plik — zapis/usunięcie dopiero po zakończeniu.
+                        enabled = !mixInProgress,
                         colors =
                             ButtonDefaults.buttonColors(
                                 containerColor = CyanUi,
@@ -752,6 +754,7 @@ fun RecordPreviewScreen(
                     OutlinedButton(
                         onClick = { deleteDialog = true },
                         modifier = Modifier.weight(1f),
+                        enabled = !mixInProgress,
                         border = BorderStroke(1.dp, RecRed),
                         colors =
                             ButtonDefaults.outlinedButtonColors(

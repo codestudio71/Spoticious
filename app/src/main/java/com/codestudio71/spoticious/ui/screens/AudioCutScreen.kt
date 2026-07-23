@@ -185,7 +185,7 @@ fun AudioCutScreen(
                         }
                     },
                 ) {
-                    Text(stringResource(R.string.audio_cut_save), color = MiamiCyan, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.save), color = MiamiCyan, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {

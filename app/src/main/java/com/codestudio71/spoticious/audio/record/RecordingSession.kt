@@ -259,11 +259,20 @@ object RecordingSession {
         }
     }
 
+    /** Guard: STOP przyjęty, finalizacja/mix w toku — kolejne STOP (ekran/notyfikacja) ignorowane. */
+    @Volatile
+    private var stopInProgress = false
+
     /**
      * STOP: finalizacja WAV, potem (freestyle) asynchroniczny mixdown do pliku tymczasowego.
      * Stan Saved pojawia się od razu; [mixInProgress] mówi UI, że plik jeszcze się przetwarza.
+     * Podwójny STOP byłby groźny: drugi przebieg gasiłby [mixInProgress], gdy pierwszy mix
+     * jeszcze pracuje — UI odblokowałoby odsłuch/zapis niedokończonego pliku.
      */
     fun stopRecording() {
+        if (stopInProgress) return
+        if (vocalRecorder.recordingState.value !is RecordingState.Recording) return
+        stopInProgress = true
         scope.launch {
             val needsMix =
                 _mode.value == RecordMode.Freestyle && _selectedBeatUri.value != null
@@ -304,6 +313,7 @@ object RecordingSession {
                 }
             } finally {
                 _mixInProgress.value = false
+                stopInProgress = false
                 resumeMainPlaybackIfNeeded()
             }
         }
