@@ -10,7 +10,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
@@ -40,8 +39,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -60,24 +57,13 @@ import com.codestudio71.spoticious.folders.requestDeleteTrack
 import com.codestudio71.spoticious.folders.requestWriteAccessForRename
 import com.codestudio71.spoticious.folders.TrackMediaOpResult
 import com.codestudio71.spoticious.player.PlayerViewModel
-import com.codestudio71.spoticious.ui.theme.MiamiCyan
-import com.codestudio71.spoticious.ui.theme.MiamiGradientColors
-import com.codestudio71.spoticious.ui.theme.MiamiDialogFill
-import com.codestudio71.spoticious.ui.theme.MiamiPink
+import com.codestudio71.spoticious.ui.theme.appListSelectedRow
+import com.codestudio71.spoticious.ui.theme.LocalSpoticiousLook
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private val TrackRowShape = RoundedCornerShape(12.dp)
-
-private val TrackRowSelectedBrush =
-    Brush.verticalGradient(
-        colors =
-            listOf(
-                MiamiGradientColors[1].copy(alpha = 0.72f),
-                MiamiGradientColors[2].copy(alpha = 0.58f),
-            ),
-    )
 
 private sealed class PendingMediaAction {
     data class DeleteApi30(val uri: android.net.Uri) : PendingMediaAction()
@@ -95,6 +81,7 @@ fun TracksScreen(
     showTrackNumbers: Boolean = false,
     onOpenFullPlayer: () -> Unit = {}
 ) {
+    val look = LocalSpoticiousLook.current
     val context = LocalContext.current
     val app = context.applicationContext as Application
     val scope = rememberCoroutineScope()
@@ -278,12 +265,15 @@ fun TracksScreen(
         ) {
             Text(
                 text = stringResource(R.string.music_access_tracks),
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+                color = look.textSecondary,
                 fontSize = 16.sp
             )
             androidx.compose.material3.Button(
                 onClick = { permissionLauncher.launch(audioPermission) },
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MiamiCyan)
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = look.accent,
+                    contentColor = look.onAccent,
+                )
             ) {
                 Text(stringResource(R.string.share_access))
             }
@@ -301,12 +291,12 @@ fun TracksScreen(
     optionsTarget?.let { file ->
         AlertDialog(
             onDismissRequest = { optionsTarget = null },
-            title = { Text(stringResource(R.string.track_options_title), color = Color.White) },
+            title = { Text(stringResource(R.string.track_options_title), color = look.textPrimary) },
             text = {
                 Column {
                     Text(
                         text = file.displayName,
-                        color = Color.LightGray,
+                        color = look.textMuted,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -319,7 +309,7 @@ fun TracksScreen(
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(stringResource(R.string.rename_track), color = MiamiCyan)
+                        Text(stringResource(R.string.rename_track), color = look.accent)
                     }
                     TextButton(
                         onClick = {
@@ -332,25 +322,25 @@ fun TracksScreen(
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(stringResource(R.string.delete_track_from_device), color = MiamiPink)
+                        Text(stringResource(R.string.delete_track_from_device), color = look.accentAlt)
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { optionsTarget = null }) {
-                    Text(stringResource(R.string.cancel), color = Color.White.copy(alpha = 0.85f))
+                    Text(stringResource(R.string.cancel), color = look.textSecondary)
                 }
             },
-            containerColor = MiamiDialogFill
+            containerColor = look.dialogFill
         )
     }
 
     confirmDeleteTarget?.let { file ->
         AlertDialog(
             onDismissRequest = { confirmDeleteTarget = null },
-            title = { Text(stringResource(R.string.delete_track_from_device), color = Color.White) },
+            title = { Text(stringResource(R.string.delete_track_from_device), color = look.textPrimary) },
             text = {
-                Text(stringResource(R.string.delete_track_confirm), color = Color.LightGray)
+                Text(stringResource(R.string.delete_track_confirm), color = look.textMuted)
             },
             confirmButton = {
                 TextButton(
@@ -359,27 +349,27 @@ fun TracksScreen(
                         launchDelete(file)
                     }
                 ) {
-                    Text(stringResource(R.string.delete_track_from_device), color = MiamiPink)
+                    Text(stringResource(R.string.delete_track_from_device), color = look.accentAlt)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { confirmDeleteTarget = null }) {
-                    Text(stringResource(R.string.cancel), color = Color.White.copy(alpha = 0.85f))
+                    Text(stringResource(R.string.cancel), color = look.textSecondary)
                 }
             },
-            containerColor = MiamiDialogFill
+            containerColor = look.dialogFill
         )
     }
 
     renameTarget?.let { file ->
         AlertDialog(
             onDismissRequest = { renameTarget = null },
-            title = { Text(stringResource(R.string.rename_track_dialog_title), color = Color.White) },
+            title = { Text(stringResource(R.string.rename_track_dialog_title), color = look.textPrimary) },
             text = {
                 Column {
                     Text(
                         stringResource(R.string.rename_track_hint),
-                        color = Color.Gray,
+                        color = look.textMuted,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
@@ -389,10 +379,10 @@ fun TracksScreen(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedBorderColor = MiamiCyan,
-                            unfocusedBorderColor = Color.Gray
+                            focusedTextColor = look.textPrimary,
+                            unfocusedTextColor = look.textPrimary,
+                            focusedBorderColor = look.accent,
+                            unfocusedBorderColor = look.textMuted
                         )
                     )
                 }
@@ -401,15 +391,15 @@ fun TracksScreen(
                 TextButton(
                     onClick = { startRenameFlow(file, renameFieldText) }
                 ) {
-                    Text(stringResource(R.string.save), color = MiamiCyan)
+                    Text(stringResource(R.string.save), color = look.accent)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { renameTarget = null }) {
-                    Text(stringResource(R.string.cancel), color = MiamiPink)
+                    Text(stringResource(R.string.cancel), color = look.accentAlt)
                 }
             },
-            containerColor = MiamiDialogFill
+            containerColor = look.dialogFill
         )
     }
 
@@ -424,7 +414,7 @@ fun TracksScreen(
                         .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = MiamiCyan)
+                    CircularProgressIndicator(color = look.accent)
                 }
             } else {
                 LazyColumn(
@@ -466,7 +456,10 @@ fun TracksScreen(
                         .fillMaxWidth()
                         .padding(16.dp)
                         .height(52.dp),
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MiamiPink)
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = look.accentAlt,
+                        contentColor = look.onAccent,
+                    )
                 ) {
                     Text(
                         text = if (isPlaying) stringResource(R.string.pause) else stringResource(R.string.play),
@@ -489,19 +482,13 @@ private fun TrackRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
+    val look = LocalSpoticiousLook.current
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .padding(vertical = 3.dp)
-                .clip(TrackRowShape)
-                .then(
-                    if (isSelected) {
-                        Modifier.background(TrackRowSelectedBrush, TrackRowShape)
-                    } else {
-                        Modifier
-                    },
-                )
+                .appListSelectedRow(selected = isSelected, shape = TrackRowShape)
                 .combinedClickable(
                     onClick = onClick,
                     onLongClick = onLongClick,
@@ -512,7 +499,7 @@ private fun TrackRow(
         if (trackNumber != null) {
             Text(
                 text = "$trackNumber.",
-                color = MiamiCyan,
+                color = look.accent,
                 fontSize = 15.sp,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                 modifier = Modifier.padding(end = 8.dp),
@@ -520,7 +507,7 @@ private fun TrackRow(
         }
         Text(
             text = file.displayName,
-            color = Color.White,
+            color = look.textPrimary,
             fontSize = 15.sp,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1,
@@ -530,8 +517,8 @@ private fun TrackRow(
         Text(
             text = formatDuration(file.durationMs),
             color =
-                if (isSelected) Color.White.copy(alpha = 0.9f)
-                else Color.White.copy(alpha = 0.65f),
+                if (isSelected) look.textSecondary
+                else look.textMuted,
             fontSize = 13.sp,
             modifier = Modifier.padding(start = 12.dp),
         )

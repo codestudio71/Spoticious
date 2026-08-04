@@ -64,11 +64,9 @@ import com.codestudio71.spoticious.ui.components.TimeStepper
 import com.codestudio71.spoticious.ui.components.formatStepperTime
 import com.codestudio71.spoticious.ui.components.formatStepperTimeHms
 import com.codestudio71.spoticious.ui.components.replaceTimeUnit
-import com.codestudio71.spoticious.ui.theme.MiamiCyan
-import com.codestudio71.spoticious.ui.theme.MiamiPink
+import com.codestudio71.spoticious.ui.theme.LocalSpoticiousLook
 import java.io.File
 
-private val DarkOnCyan = Color(0xFF0D0D1A)
 
 /** Export/merge name dialog: null = closed; segmentId null = merge. */
 private data class PendingExportName(
@@ -82,6 +80,7 @@ fun AudioCutScreen(
     modifier: Modifier = Modifier,
     viewModel: AudioCutViewModel = viewModel(),
 ) {
+    val look = LocalSpoticiousLook.current
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val fromMs by viewModel.fromMs.collectAsState()
@@ -108,7 +107,7 @@ fun AudioCutScreen(
             title = {
                 Text(
                     stringResource(R.string.audio_cut_export_name_title),
-                    color = Color.White,
+                    color = look.textPrimary,
                     fontWeight = FontWeight.Bold,
                 )
             },
@@ -118,17 +117,17 @@ fun AudioCutScreen(
                     onValueChange = { pendingExportName = pending.copy(draft = it) },
                     singleLine = true,
                     label = {
-                        Text(stringResource(R.string.audio_cut_export_name_hint), color = Color.White.copy(alpha = 0.6f))
+                        Text(stringResource(R.string.audio_cut_export_name_hint), color = look.textMuted)
                     },
                     colors =
                         OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedBorderColor = MiamiCyan,
-                            unfocusedBorderColor = MiamiCyan.copy(alpha = 0.5f),
-                            cursorColor = MiamiCyan,
-                            focusedLabelColor = MiamiCyan,
-                            unfocusedLabelColor = Color.White.copy(alpha = 0.6f),
+                            focusedTextColor = look.textPrimary,
+                            unfocusedTextColor = look.textPrimary,
+                            focusedBorderColor = look.accent,
+                            unfocusedBorderColor = look.accent.copy(alpha = 0.5f),
+                            cursorColor = look.accent,
+                            focusedLabelColor = look.accent,
+                            unfocusedLabelColor = look.textMuted,
                         ),
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -185,15 +184,15 @@ fun AudioCutScreen(
                         }
                     },
                 ) {
-                    Text(stringResource(R.string.save), color = MiamiCyan, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.save), color = look.accent, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { pendingExportName = null }) {
-                    Text(stringResource(R.string.cancel), color = Color.White.copy(alpha = 0.7f))
+                    Text(stringResource(R.string.cancel), color = look.textMuted)
                 }
             },
-            containerColor = Color(0xFF1A0A2E),
+            containerColor = look.dialogFill,
         )
     }
 
@@ -211,11 +210,11 @@ fun AudioCutScreen(
             modifier = Modifier.padding(top = 8.dp),
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = look.textPrimary)
             }
             Text(
                 stringResource(R.string.audio_cut_title),
-                color = Color.White,
+                color = look.textPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -226,7 +225,7 @@ fun AudioCutScreen(
         Button(
             onClick = { filePicker.launch(arrayOf("audio/*")) },
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = MiamiCyan, contentColor = DarkOnCyan),
+            colors = ButtonDefaults.buttonColors(containerColor = look.accent, contentColor = look.onAccent),
         ) {
             Text(stringResource(R.string.audio_cut_pick_file))
         }
@@ -237,7 +236,7 @@ fun AudioCutScreen(
             CutUiState.Idle -> {
                 Text(
                     stringResource(R.string.audio_cut_idle_hint),
-                    color = Color.White.copy(alpha = 0.65f),
+                    color = look.textMuted,
                     fontSize = 14.sp,
                 )
             }
@@ -246,14 +245,14 @@ fun AudioCutScreen(
                 Column(Modifier.fillMaxWidth()) {
                     Text(
                         stringResource(R.string.audio_cut_loading),
-                        color = MiamiCyan,
+                        color = look.accent,
                         fontSize = 14.sp,
                     )
                     Spacer(Modifier.height(8.dp))
                     LinearProgressIndicator(
                         progress = { state.progress },
                         modifier = Modifier.fillMaxWidth(),
-                        color = MiamiCyan,
+                        color = look.accent,
                     )
                 }
             }
@@ -261,7 +260,7 @@ fun AudioCutScreen(
             is CutUiState.Error -> {
                 Text(
                     stringResource(R.string.audio_cut_error),
-                    color = MiamiPink,
+                    color = look.accentAlt,
                     fontSize = 14.sp,
                 )
             }
@@ -269,7 +268,7 @@ fun AudioCutScreen(
             is CutUiState.Ready -> {
                 Text(
                     state.displayName,
-                    color = Color.White.copy(alpha = 0.75f),
+                    color = look.textSecondary,
                     fontSize = 13.sp,
                     maxLines = 1,
                 )
@@ -304,7 +303,7 @@ fun AudioCutScreen(
                                     Icons.Default.PlayArrow
                                 },
                             contentDescription = stringResource(R.string.audio_cut_preview),
-                            tint = if (fromMs < toMs) MiamiCyan else Color.White.copy(alpha = 0.35f),
+                            tint = if (fromMs < toMs) look.accent else look.inactiveTrack,
                         )
                     }
                     Text(
@@ -318,7 +317,7 @@ fun AudioCutScreen(
                             } else {
                                 stringResource(R.string.audio_cut_preview_hint)
                             },
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = look.textMuted,
                         fontSize = 12.sp,
                         modifier = Modifier.weight(1f),
                     )
@@ -339,12 +338,12 @@ fun AudioCutScreen(
                         onSetUnit = { unit, value ->
                             viewModel.setFromMs(replaceTimeUnit(fromMs, unit, value))
                         },
-                        accent = MiamiCyan,
+                        accent = look.accent,
                         showHours = showHours,
                     )
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 14.dp),
-                        color = MiamiCyan.copy(alpha = 0.25f),
+                        color = look.accent.copy(alpha = 0.25f),
                     )
                     TimeStepper(
                         label = stringResource(R.string.audio_cut_to),
@@ -353,7 +352,7 @@ fun AudioCutScreen(
                         onSetUnit = { unit, value ->
                             viewModel.setToMs(replaceTimeUnit(toMs, unit, value))
                         },
-                        accent = MiamiPink,
+                        accent = look.accentAlt,
                         showHours = showHours,
                     )
                 }
@@ -365,14 +364,14 @@ fun AudioCutScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = fromMs < toMs,
                 ) {
-                    Text(stringResource(R.string.audio_cut_add_segment), color = MiamiCyan)
+                    Text(stringResource(R.string.audio_cut_add_segment), color = look.accent)
                 }
 
                 if (segments.isNotEmpty()) {
                     Spacer(Modifier.height(20.dp))
                     Text(
                         stringResource(R.string.audio_cut_segments),
-                        color = MiamiCyan,
+                        color = look.accent,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                     )
@@ -380,7 +379,7 @@ fun AudioCutScreen(
                         Spacer(Modifier.height(6.dp))
                         Text(
                             stringResource(R.string.audio_cut_merge_hint),
-                            color = Color.White.copy(alpha = 0.55f),
+                            color = look.textMuted,
                             fontSize = 12.sp,
                         )
                         Spacer(Modifier.height(8.dp))
@@ -398,13 +397,13 @@ fun AudioCutScreen(
                             if (merging) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(18.dp),
-                                    color = MiamiCyan,
+                                    color = look.accent,
                                     strokeWidth = 2.dp,
                                 )
                             } else {
                                 Text(
                                     stringResource(R.string.audio_cut_merge_segments),
-                                    color = MiamiCyan,
+                                    color = look.accent,
                                 )
                             }
                         }
@@ -463,6 +462,7 @@ private fun SegmentRow(
     onShare: (java.io.File) -> Unit,
     onDelete: () -> Unit,
 ) {
+    val look = LocalSpoticiousLook.current
     var editName by remember(segmentId, label) { mutableStateOf(label) }
 
     MiamiFrame(modifier = Modifier.fillMaxWidth(), contentPadding = 12.dp) {
@@ -476,15 +476,15 @@ private fun SegmentRow(
                     onCheckedChange = { onToggleMergeSelect() },
                     colors =
                         CheckboxDefaults.colors(
-                            checkedColor = MiamiCyan,
-                            uncheckedColor = Color.White.copy(alpha = 0.5f),
-                            checkmarkColor = DarkOnCyan,
+                            checkedColor = look.accent,
+                            uncheckedColor = look.textMuted,
+                            checkmarkColor = look.onAccent,
                         ),
                 )
                 if (mergeOrder != null) {
                     Text(
                         "$mergeOrder.",
-                        color = MiamiCyan,
+                        color = look.accent,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(end = 6.dp),
@@ -492,7 +492,7 @@ private fun SegmentRow(
                 }
                 Text(
                     label,
-                    color = Color.White,
+                    color = look.textPrimary,
                     fontSize = 14.sp,
                     maxLines = 1,
                     modifier = Modifier.weight(1f),
@@ -510,17 +510,17 @@ private fun SegmentRow(
             label = { Text(stringResource(R.string.audio_cut_segment_name)) },
             colors =
                 OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedBorderColor = MiamiCyan,
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.35f),
-                    cursorColor = MiamiCyan,
+                    focusedTextColor = look.textPrimary,
+                    unfocusedTextColor = look.textPrimary,
+                    focusedBorderColor = look.accent,
+                    unfocusedBorderColor = look.inactiveTrack,
+                    cursorColor = look.accent,
                 ),
         )
         Spacer(Modifier.height(6.dp))
         Text(
             "$rangeLabel ($durationLabel)",
-            color = Color.White.copy(alpha = 0.55f),
+            color = look.textMuted,
             fontSize = 12.sp,
         )
         Spacer(Modifier.height(10.dp))
@@ -533,12 +533,12 @@ private fun SegmentRow(
                 onClick = onExport,
                 enabled = !isExporting,
                 modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(containerColor = MiamiCyan, contentColor = DarkOnCyan),
+                colors = ButtonDefaults.buttonColors(containerColor = look.accent, contentColor = look.onAccent),
             ) {
                 if (isExporting) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp),
-                        color = DarkOnCyan,
+                        color = look.onAccent,
                         strokeWidth = 2.dp,
                     )
                 } else {
@@ -549,10 +549,10 @@ private fun SegmentRow(
                 onClick = { exportCacheFile?.let(onShare) },
                 enabled = exportCacheFile != null && exportCacheFile.exists(),
             ) {
-                Icon(Icons.Default.Share, contentDescription = null, tint = MiamiCyan)
+                Icon(Icons.Default.Share, contentDescription = null, tint = look.accent)
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = null, tint = MiamiPink)
+                Icon(Icons.Default.Delete, contentDescription = null, tint = look.accentAlt)
             }
         }
     }

@@ -72,13 +72,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import com.codestudio71.spoticious.ui.theme.LocalSpoticiousLook
+import com.codestudio71.spoticious.ui.theme.LookExtraAtmosphere
 import com.codestudio71.spoticious.ui.theme.MiamiMenuShape
-import com.codestudio71.spoticious.ui.theme.MiamiCyan
-import com.codestudio71.spoticious.ui.theme.MiamiGradientColors
-import com.codestudio71.spoticious.ui.theme.MiamiPink
-
-/** Pełne krycie — bez prześwitu listy. */
-private val SortMenuFill = Color(0xFF0D0D1A)
+import com.codestudio71.spoticious.ui.theme.miamiVerticalGradient
+import com.codestudio71.spoticious.ui.theme.usesPremiumExtraChrome
 
 enum class Tab(
     val titleResId: Int,
@@ -92,6 +90,7 @@ enum class Tab(
 
 @Composable
 fun MainScreen(modifier: Modifier = Modifier) {
+    val look = LocalSpoticiousLook.current
     var selectedTab by remember { mutableStateOf(Tab.UTWORY) }
     var showFullPlayer by remember { mutableStateOf(false) }
     var showExtraScreen by remember { mutableStateOf(false) }
@@ -99,6 +98,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
     var showRecordPreview by remember { mutableStateOf(false) }
     var showWrapped by remember { mutableStateOf(false) }
     var showAudioCut by remember { mutableStateOf(false) }
+    var showNewLook by remember { mutableStateOf(false) }
     var searchExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var sortMode by remember { mutableStateOf(TrackSortOrder.NAME_ASC) }
@@ -108,6 +108,11 @@ fun MainScreen(modifier: Modifier = Modifier) {
     val showTrackNumbers by context.uiPreferencesDataStore.data
         .map { prefs -> prefs[UiPrefKeys.SHOW_TRACK_NUMBERS] ?: false }
         .collectAsState(initial = false)
+    val lookId by context.uiPreferencesDataStore.data
+        .map { prefs ->
+            com.codestudio71.spoticious.ui.theme.SpoticiousLookId.fromStorageKey(prefs[UiPrefKeys.APP_LOOK])
+        }
+        .collectAsState(initial = com.codestudio71.spoticious.ui.theme.SpoticiousLookId.MIAMI)
     val playerViewModel: PlayerViewModel = viewModel()
     val foldersViewModel: FoldersViewModel = viewModel()
 
@@ -123,8 +128,24 @@ fun MainScreen(modifier: Modifier = Modifier) {
         foldersViewModel.loadAudioFilesIfPermitted()
     }
 
-    val immersiveExtraScreen = showRecordPreview || showAudioCut
+    val immersiveExtraScreen = showRecordPreview || showAudioCut || showNewLook
 
+    fun clearExtraSubScreens() {
+        showRecordPreview = false
+        showPlaylistScreen = false
+        showWrapped = false
+        showAudioCut = false
+        showNewLook = false
+    }
+
+    fun leaveExtraToTabs() {
+        clearExtraSubScreens()
+        showExtraScreen = false
+    }
+
+    BackHandler(enabled = showNewLook && showExtraScreen) {
+        showNewLook = false
+    }
     BackHandler(enabled = showRecordPreview && showExtraScreen) {
         showRecordPreview = false
     }
@@ -135,7 +156,12 @@ fun MainScreen(modifier: Modifier = Modifier) {
         showWrapped = false
     }
     BackHandler(
-        enabled = showExtraScreen && !showRecordPreview && !showWrapped && !showAudioCut,
+        enabled =
+            showExtraScreen &&
+                !showRecordPreview &&
+                !showWrapped &&
+                !showAudioCut &&
+                !showNewLook,
     ) {
         showExtraScreen = false
     }
@@ -148,8 +174,12 @@ fun MainScreen(modifier: Modifier = Modifier) {
         modifier =
             modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(MiamiGradientColors)),
+                .background(miamiVerticalGradient()),
     ) {
+        // Extra + Extra submenus only — classic Miami gets no overlay
+        if (showExtraScreen && look.usesPremiumExtraChrome) {
+            LookExtraAtmosphere(modifier = Modifier.fillMaxSize())
+        }
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = Color.Transparent,
@@ -170,10 +200,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                             searchQuery = ""
                         },
                         onExtraClick = {
-                            showRecordPreview = false
-                            showPlaylistScreen = false
-                            showWrapped = false
-                            showAudioCut = false
+                            clearExtraSubScreens()
                             showExtraScreen = true
                         },
                         sortMode = sortMode,
@@ -196,28 +223,31 @@ fun MainScreen(modifier: Modifier = Modifier) {
                     Column {
                         MiniPlayer(
                             viewModel = playerViewModel,
-                            onTapWhenEmpty = { selectedTab = Tab.UTWORY },
+                            onTapWhenEmpty = {
+                                leaveExtraToTabs()
+                                selectedTab = Tab.UTWORY
+                            },
                             onTapWhenPlaying = openFullPlayer,
                         )
                         NavigationBar(
                             containerColor = Color.Transparent,
-                            contentColor = Color.White,
+                            contentColor = LocalSpoticiousLook.current.textPrimary,
                         ) {
                             Tab.entries.forEach { tab ->
                                 val isSelected = selectedTab == tab
+                                val lookNav = LocalSpoticiousLook.current
                                 val selectedColor =
                                     when (tab) {
-                                        Tab.UTWORY -> MiamiCyan
-                                        Tab.FOLDERY -> Color.White
-                                        Tab.EQ -> Color.White
-                                        Tab.RENDER -> MiamiPink
+                                        Tab.UTWORY -> look.accent
+                                        Tab.FOLDERY -> lookNav.textPrimary
+                                        Tab.EQ -> lookNav.textPrimary
+                                        Tab.RENDER -> lookNav.accentAlt
                                     }
                                 val unselectedColor = selectedColor.copy(alpha = 0.4f)
                                 NavigationBarItem(
                                     selected = isSelected,
                                     onClick = {
-                                        showExtraScreen = false
-                                        showRecordPreview = false
+                                        leaveExtraToTabs()
                                         selectedTab = tab
                                     },
                                     icon = {
@@ -273,6 +303,20 @@ fun MainScreen(modifier: Modifier = Modifier) {
         ) {
             if (showExtraScreen) {
                 when {
+                    showNewLook ->
+                        NewLookScreen(
+                            selectedLookId = lookId,
+                            onLookSelected = { id ->
+                                scope.launch {
+                                    context.uiPreferencesDataStore.edit { prefs ->
+                                        prefs[UiPrefKeys.APP_LOOK] = id.storageKey
+                                    }
+                                }
+                            },
+                            onBack = { showNewLook = false },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+
                     showWrapped ->
                         WrappedScreen(
                             onBack = { showWrapped = false },
@@ -304,25 +348,36 @@ fun MainScreen(modifier: Modifier = Modifier) {
                                 showRecordPreview = false
                                 showWrapped = false
                                 showAudioCut = false
+                                showNewLook = false
                                 showPlaylistScreen = true
                             },
                             onRecordPreviewClick = {
                                 showPlaylistScreen = false
                                 showWrapped = false
                                 showAudioCut = false
+                                showNewLook = false
                                 showRecordPreview = true
                             },
                             onWrappedClick = {
                                 showRecordPreview = false
                                 showPlaylistScreen = false
                                 showAudioCut = false
+                                showNewLook = false
                                 showWrapped = true
                             },
                             onAudioCutClick = {
                                 showRecordPreview = false
                                 showPlaylistScreen = false
                                 showWrapped = false
+                                showNewLook = false
                                 showAudioCut = true
+                            },
+                            onNewLookClick = {
+                                showRecordPreview = false
+                                showPlaylistScreen = false
+                                showWrapped = false
+                                showAudioCut = false
+                                showNewLook = true
                             },
                         )
                 }
@@ -384,6 +439,7 @@ private fun MainTopBar(
     showTrackNumbers: Boolean,
     onShowTrackNumbersChange: (Boolean) -> Unit,
 ) {
+    val look = LocalSpoticiousLook.current
     val searchActive = selectedTab == Tab.UTWORY || selectedTab == Tab.FOLDERY
 
     Box(
@@ -395,7 +451,7 @@ private fun MainTopBar(
     ) {
         Text(
             text = stringResource(R.string.extra),
-            color = MiamiPink,
+            color = look.accentAlt,
             fontSize = 18.sp,
             fontWeight = FontWeight.Medium,
             modifier =
@@ -421,12 +477,12 @@ private fun MainTopBar(
                                 .weight(1f)
                                 .padding(end = 44.dp)
                                 .background(
-                                    MiamiCyan.copy(alpha = 0.15f),
+                                    look.accent.copy(alpha = 0.15f),
                                     RoundedCornerShape(8.dp),
                                 )
                                 .border(
                                     width = 1.dp,
-                                    color = MiamiCyan.copy(alpha = 0.4f),
+                                    color = look.accent.copy(alpha = 0.4f),
                                     shape = RoundedCornerShape(8.dp),
                                 )
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -437,14 +493,14 @@ private fun MainTopBar(
                             onValueChange = onSearchQueryChange,
                             modifier = Modifier.weight(1f),
                             singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
-                            cursorBrush = SolidColor(MiamiCyan),
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = look.textPrimary),
+                            cursorBrush = SolidColor(look.accent),
                             decorationBox = { inner ->
                                 Box(modifier = Modifier.padding(vertical = 4.dp)) {
                                     if (searchQuery.isEmpty()) {
                                         Text(
                                             stringResource(R.string.search_placeholder),
-                                            color = Color.White.copy(alpha = 0.6f),
+                                            color = look.textMuted,
                                             fontSize = 16.sp,
                                         )
                                     }
@@ -456,7 +512,7 @@ private fun MainTopBar(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = stringResource(R.string.close),
-                                tint = Color.White.copy(alpha = 0.7f),
+                                tint = look.textMuted,
                             )
                         }
                     }
@@ -475,7 +531,7 @@ private fun MainTopBar(
             } else {
                 Text(
                     text = stringResource(R.string.search),
-                    color = MiamiCyan,
+                    color = look.accent,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
                     modifier =
@@ -509,11 +565,12 @@ private fun SortShelvesButton(
     showTrackNumberingToggle: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val look = LocalSpoticiousLook.current
     val shelfColors =
         listOf(
-            Color(0xFF0066FF),
-            Color(0xFF00AACC),
-            Color(0xFF00E5FF),
+            look.accent.copy(alpha = 0.55f),
+            look.accent.copy(alpha = 0.8f),
+            look.accent,
         )
     val shelfShape = RoundedCornerShape(2.dp)
 
@@ -551,13 +608,13 @@ private fun SortShelvesButton(
                         Modifier
                             .width(280.dp)
                             .clip(MiamiMenuShape)
-                            .background(SortMenuFill)
-                            .border(1.dp, MiamiCyan.copy(alpha = 0.85f), MiamiMenuShape)
+                            .background(LocalSpoticiousLook.current.menuFill)
+                            .border(1.dp, look.accent.copy(alpha = 0.85f), MiamiMenuShape)
                             .padding(vertical = 8.dp),
                 ) {
                     Text(
                         text = stringResource(R.string.sort_by),
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = look.textMuted,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
@@ -574,7 +631,7 @@ private fun SortShelvesButton(
                                             TrackSortOrder.DATE_ADDED_ASC -> stringResource(R.string.sort_date_asc)
                                             TrackSortOrder.DATE_ADDED_DESC -> stringResource(R.string.sort_date_desc)
                                         },
-                                    color = if (sortMode == order) MiamiCyan else Color.White,
+                                    color = if (sortMode == order) look.accent else look.textPrimary,
                                 )
                             },
                             onClick = {
@@ -586,7 +643,7 @@ private fun SortShelvesButton(
                     if (showTrackNumberingToggle) {
                         HorizontalDivider(
                             modifier = Modifier.padding(vertical = 4.dp),
-                            color = Color.White.copy(alpha = 0.12f),
+                            color = look.inactiveTrack,
                         )
                         Row(
                             modifier =
@@ -598,7 +655,7 @@ private fun SortShelvesButton(
                         ) {
                             Text(
                                 text = stringResource(R.string.track_numbering),
-                                color = Color.White,
+                                color = look.textPrimary,
                                 fontSize = 14.sp,
                             )
                             Switch(
@@ -606,10 +663,10 @@ private fun SortShelvesButton(
                                 onCheckedChange = onShowTrackNumbersChange,
                                 colors =
                                     SwitchDefaults.colors(
-                                        checkedThumbColor = Color.White,
-                                        checkedTrackColor = MiamiCyan,
-                                        uncheckedThumbColor = Color.White.copy(alpha = 0.85f),
-                                        uncheckedTrackColor = Color.White.copy(alpha = 0.25f),
+                                        checkedThumbColor = look.onAccent,
+                                        checkedTrackColor = look.accent,
+                                        uncheckedThumbColor = look.textMuted,
+                                        uncheckedTrackColor = look.inactiveTrack,
                                     ),
                             )
                         }

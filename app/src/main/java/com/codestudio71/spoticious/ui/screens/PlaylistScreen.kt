@@ -68,9 +68,7 @@ import androidx.compose.ui.unit.sp
 import com.codestudio71.spoticious.R
 import com.codestudio71.spoticious.player.PlayerViewModel
 import com.codestudio71.spoticious.ui.components.MiamiFrame
-import com.codestudio71.spoticious.ui.theme.MiamiCyan
-import com.codestudio71.spoticious.ui.theme.MiamiDialogFill
-import com.codestudio71.spoticious.ui.theme.MiamiPink
+import com.codestudio71.spoticious.ui.theme.LocalSpoticiousLook
 import com.codestudio71.spoticious.ui.theme.miamiMenuSurface
 import com.codestudio71.spoticious.ui.theme.miamiVerticalGradient
 import org.json.JSONArray
@@ -232,6 +230,7 @@ fun PlaylistScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val look = LocalSpoticiousLook.current
     val context = LocalContext.current
     val playlistManager = remember { PlaylistManager(context) }
 
@@ -257,13 +256,13 @@ fun PlaylistScreen(
     if (showAddDialog) {
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
-            title = { Text(stringResource(R.string.new_playlist), color = Color.White) },
+            title = { Text(stringResource(R.string.new_playlist), color = look.textPrimary) },
             text = {
                 OutlinedTextField(
                     value = newPlaylistName,
                     onValueChange = { newPlaylistName = it },
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White)
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = look.textPrimary, unfocusedTextColor = look.textPrimary)
                 )
             },
             confirmButton = {
@@ -275,12 +274,12 @@ fun PlaylistScreen(
                         newPlaylistName = ""
                         showAddDialog = false
                     }
-                }) { Text(stringResource(R.string.save), color = MiamiCyan) }
+                }) { Text(stringResource(R.string.save), color = look.accent) }
             },
             dismissButton = {
-                TextButton(onClick = { showAddDialog = false }) { Text(stringResource(R.string.cancel), color = MiamiPink) }
+                TextButton(onClick = { showAddDialog = false }) { Text(stringResource(R.string.cancel), color = look.accentAlt) }
             },
-            containerColor = MiamiDialogFill
+            containerColor = look.dialogFill
         )
     }
 
@@ -288,12 +287,12 @@ fun PlaylistScreen(
     playlistRowMenuTarget?.let { pl ->
         AlertDialog(
             onDismissRequest = { playlistRowMenuTarget = null },
-            title = { Text(stringResource(R.string.playlist_row_options_title), color = Color.White) },
+            title = { Text(stringResource(R.string.playlist_row_options_title), color = look.textPrimary) },
             text = {
                 Column {
                     Text(
                         pl.name,
-                        color = Color.LightGray,
+                        color = look.textMuted,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -306,7 +305,7 @@ fun PlaylistScreen(
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(stringResource(R.string.rename_playlist), color = MiamiCyan)
+                        Text(stringResource(R.string.rename_playlist), color = look.accent)
                     }
                     TextButton(
                         onClick = {
@@ -315,31 +314,31 @@ fun PlaylistScreen(
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(stringResource(R.string.delete_playlist), color = MiamiPink)
+                        Text(stringResource(R.string.delete_playlist), color = look.accentAlt)
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { playlistRowMenuTarget = null }) {
-                    Text(stringResource(R.string.cancel), color = Color.White.copy(alpha = 0.85f))
+                    Text(stringResource(R.string.cancel), color = look.textSecondary)
                 }
             },
-            containerColor = MiamiDialogFill
+            containerColor = look.dialogFill
         )
     }
 
     renamePlaylistTarget?.let { pl ->
         AlertDialog(
             onDismissRequest = { renamePlaylistTarget = null },
-            title = { Text(stringResource(R.string.rename_playlist), color = Color.White) },
+            title = { Text(stringResource(R.string.rename_playlist), color = look.textPrimary) },
             text = {
                 OutlinedTextField(
                     value = renamePlaylistField,
                     onValueChange = { renamePlaylistField = it },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        focusedTextColor = look.textPrimary,
+                        unfocusedTextColor = look.textPrimary
                     )
                 )
             },
@@ -357,22 +356,22 @@ fun PlaylistScreen(
                             renamePlaylistTarget = null
                         }
                     }
-                ) { Text(stringResource(R.string.save), color = MiamiCyan) }
+                ) { Text(stringResource(R.string.save), color = look.accent) }
             },
             dismissButton = {
                 TextButton(onClick = { renamePlaylistTarget = null }) {
-                    Text(stringResource(R.string.cancel), color = MiamiPink)
+                    Text(stringResource(R.string.cancel), color = look.accentAlt)
                 }
             },
-            containerColor = MiamiDialogFill
+            containerColor = look.dialogFill
         )
     }
 
     confirmDeletePlaylistTarget?.let { pl ->
         AlertDialog(
             onDismissRequest = { confirmDeletePlaylistTarget = null },
-            title = { Text(stringResource(R.string.delete_playlist), color = Color.White) },
-            text = { Text(stringResource(R.string.delete_playlist_confirm), color = Color.LightGray) },
+            title = { Text(stringResource(R.string.delete_playlist), color = look.textPrimary) },
+            text = { Text(stringResource(R.string.delete_playlist_confirm), color = look.textMuted) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -383,14 +382,14 @@ fun PlaylistScreen(
                         }
                         confirmDeletePlaylistTarget = null
                     }
-                ) { Text(stringResource(R.string.delete_playlist), color = MiamiPink) }
+                ) { Text(stringResource(R.string.delete_playlist), color = look.accentAlt) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmDeletePlaylistTarget = null }) {
-                    Text(stringResource(R.string.cancel), color = Color.White.copy(alpha = 0.85f))
+                    Text(stringResource(R.string.cancel), color = look.textSecondary)
                 }
             },
-            containerColor = MiamiDialogFill
+            containerColor = look.dialogFill
         )
     }
 
@@ -429,7 +428,7 @@ fun PlaylistScreen(
                         } else {
                             stringResource(R.string.select_folder)
                         },
-                    color = Color.White,
+                    color = look.textPrimary,
                 )
             },
             text = {
@@ -451,13 +450,13 @@ fun PlaylistScreen(
                                 onClick = { addMode = PlaylistAddMode.Tracks },
                                 colors =
                                     RadioButtonDefaults.colors(
-                                        selectedColor = MiamiCyan,
-                                        unselectedColor = Color.White.copy(alpha = 0.5f),
+                                        selectedColor = look.accent,
+                                        unselectedColor = look.textMuted,
                                     ),
                             )
                             Text(
                                 stringResource(R.string.playlist_add_mode_tracks),
-                                color = Color.White,
+                                color = look.textPrimary,
                                 fontSize = 14.sp,
                             )
                         }
@@ -473,13 +472,13 @@ fun PlaylistScreen(
                                 onClick = { addMode = PlaylistAddMode.Folders },
                                 colors =
                                     RadioButtonDefaults.colors(
-                                        selectedColor = MiamiCyan,
-                                        unselectedColor = Color.White.copy(alpha = 0.5f),
+                                        selectedColor = look.accent,
+                                        unselectedColor = look.textMuted,
                                     ),
                             )
                             Text(
                                 stringResource(R.string.playlist_add_mode_folders),
-                                color = Color.White,
+                                color = look.textPrimary,
                                 fontSize = 14.sp,
                             )
                         }
@@ -491,7 +490,7 @@ fun PlaylistScreen(
                                 val track = allTracks[i]
                                 Text(
                                     text = track.second,
-                                    color = Color.White,
+                                    color = look.textPrimary,
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
@@ -536,7 +535,7 @@ fun PlaylistScreen(
                                     Icon(
                                         Icons.Default.Folder,
                                         contentDescription = null,
-                                        tint = MiamiCyan,
+                                        tint = look.accent,
                                         modifier = Modifier.size(22.dp),
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
@@ -547,7 +546,7 @@ fun PlaylistScreen(
                                                 folder.folderName,
                                                 folder.tracks.size,
                                             ),
-                                        color = Color.White,
+                                        color = look.textPrimary,
                                         fontSize = 15.sp,
                                     )
                                 }
@@ -558,10 +557,10 @@ fun PlaylistScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showTrackSelector = false }) {
-                    Text(stringResource(R.string.close), color = MiamiPink)
+                    Text(stringResource(R.string.close), color = look.accentAlt)
                 }
             },
-            containerColor = MiamiDialogFill,
+            containerColor = look.dialogFill,
         )
         return
     }
@@ -574,15 +573,15 @@ fun PlaylistScreen(
         // --- 3A. WIDOK SZCZEGÓŁÓW PLAYLISTY ---
         if (selectedPlaylist != null) {
             Row(modifier = Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { selectedPlaylist = null }) { Icon(Icons.Default.ArrowBack, stringResource(R.string.back), tint = Color.White) }
-                Text(selectedPlaylist!!.name, color = MiamiCyan, fontSize = 20.sp, modifier = Modifier.padding(start = 8.dp))
+                IconButton(onClick = { selectedPlaylist = null }) { Icon(Icons.Default.ArrowBack, stringResource(R.string.back), tint = look.textPrimary) }
+                Text(selectedPlaylist!!.name, color = look.accent, fontSize = 20.sp, modifier = Modifier.padding(start = 8.dp))
                 Spacer(modifier = Modifier.weight(1f))
-                IconButton(onClick = { showTrackSelector = true }) { Icon(Icons.Default.Add, stringResource(R.string.add_tracks), tint = Color.White) }
+                IconButton(onClick = { showTrackSelector = true }) { Icon(Icons.Default.Add, stringResource(R.string.add_tracks), tint = look.textPrimary) }
             }
 
             if (selectedPlaylist!!.tracks.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.playlist_empty_hint), color = Color.Gray)
+                    Text(stringResource(R.string.playlist_empty_hint), color = look.textMuted)
                 }
             } else {
                 val playlist = selectedPlaylist!!
@@ -645,7 +644,7 @@ fun PlaylistScreen(
                                         Icon(
                                             imageVector = Icons.Rounded.DragHandle,
                                             contentDescription = stringResource(R.string.playlist_reorder_drag),
-                                            tint = Color.White.copy(alpha = 0.65f)
+                                            tint = look.textMuted
                                         )
                                     }
                                     Row(
@@ -669,10 +668,10 @@ fun PlaylistScreen(
                                             ),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text("${idx + 1}.", color = Color(0xFF00FFCC), fontSize = 14.sp, modifier = Modifier.width(32.dp))
+                                        Text("${idx + 1}.", color = look.accent, fontSize = 14.sp, modifier = Modifier.width(32.dp))
                                         Text(
                                             track.second,
-                                            color = Color.White,
+                                            color = look.textPrimary,
                                             fontSize = 15.sp,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
@@ -687,7 +686,7 @@ fun PlaylistScreen(
                                             Icon(
                                                 Icons.Default.MoreVert,
                                                 contentDescription = stringResource(R.string.playlist_track_options),
-                                                tint = Color.White.copy(alpha = 0.85f)
+                                                tint = look.textSecondary
                                             )
                                         }
                                         DropdownMenu(
@@ -699,7 +698,7 @@ fun PlaylistScreen(
                                             shadowElevation = 8.dp,
                                         ) {
                                             DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.remove_from_playlist), color = MiamiPink) },
+                                                text = { Text(stringResource(R.string.remove_from_playlist), color = look.accentAlt) },
                                                 onClick = {
                                                     trackMenuExpanded = false
                                                     val newTracks = playlist.tracks.toMutableList()
@@ -719,11 +718,11 @@ fun PlaylistScreen(
         // --- 3B. WIDOK GŁÓWNY (LISTA PLAYLIST) ---
         else {
             Row(modifier = Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, stringResource(R.string.back), tint = Color.White) }
-                Icon(Icons.Default.PlaylistPlay, null, tint = MiamiPink, modifier = Modifier.padding(start = 8.dp))
-                Text(stringResource(R.string.your_playlists), color = MiamiCyan, fontSize = 20.sp, modifier = Modifier.padding(start = 8.dp))
+                IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, stringResource(R.string.back), tint = look.textPrimary) }
+                Icon(Icons.Default.PlaylistPlay, null, tint = look.accentAlt, modifier = Modifier.padding(start = 8.dp))
+                Text(stringResource(R.string.your_playlists), color = look.accent, fontSize = 20.sp, modifier = Modifier.padding(start = 8.dp))
                 Spacer(modifier = Modifier.weight(1f))
-                IconButton(onClick = { showAddDialog = true }) { Icon(Icons.Default.Add, stringResource(R.string.add_playlist), tint = Color.White) }
+                IconButton(onClick = { showAddDialog = true }) { Icon(Icons.Default.Add, stringResource(R.string.add_playlist), tint = look.textPrimary) }
             }
 
             if (playlists.isEmpty()) {
@@ -731,12 +730,18 @@ fun PlaylistScreen(
                     modifier = Modifier.fillMaxSize().padding(24.dp),
                     verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(Icons.Default.PlaylistPlay, null, tint = Color.Gray, modifier = Modifier.size(64.dp))
+                    Icon(Icons.Default.PlaylistPlay, null, tint = look.textMuted, modifier = Modifier.size(64.dp))
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(stringResource(R.string.no_playlists), color = Color.White, fontSize = 18.sp)
+                    Text(stringResource(R.string.no_playlists), color = look.textPrimary, fontSize = 18.sp)
                     Spacer(modifier = Modifier.height(24.dp))
-                    Button(onClick = { showAddDialog = true }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF007F))) {
-                        Text(stringResource(R.string.add_new_list), color = Color.White)
+                    Button(
+                        onClick = { showAddDialog = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = look.accentAlt,
+                            contentColor = look.onAccent,
+                        ),
+                    ) {
+                        Text(stringResource(R.string.add_new_list))
                     }
                 }
             } else {
@@ -760,13 +765,13 @@ fun PlaylistScreen(
                                         .padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Icon(Icons.Default.MusicNote, null, tint = MiamiCyan)
+                                Icon(Icons.Default.MusicNote, null, tint = look.accent)
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column {
-                                    Text(playlist.name, color = Color.White, fontSize = 18.sp)
+                                    Text(playlist.name, color = look.textPrimary, fontSize = 18.sp)
                                     Text(
                                         stringResource(R.string.tracks_count, playlist.tracks.size),
-                                        color = Color.White.copy(alpha = 0.6f),
+                                        color = look.textMuted,
                                         fontSize = 12.sp,
                                     )
                                 }

@@ -28,7 +28,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -40,14 +39,7 @@ import com.codestudio71.spoticious.R
 import com.codestudio71.spoticious.player.OutputFormat
 import com.codestudio71.spoticious.player.RenderState
 import com.codestudio71.spoticious.player.RenderViewModel
-import com.codestudio71.spoticious.ui.theme.MiamiCyan
-import com.codestudio71.spoticious.ui.theme.MiamiDialogFill
-import com.codestudio71.spoticious.ui.theme.MiamiPanelFill
-import com.codestudio71.spoticious.ui.theme.MiamiPink
-
-private val DialogBackground = MiamiDialogFill
-private val DialogSurface = MiamiPanelFill
-private val GrayText = Color(0xFFB0B0B0)
+import com.codestudio71.spoticious.ui.theme.LocalSpoticiousLook
 
 @Composable
 fun RenderScreen(
@@ -55,6 +47,7 @@ fun RenderScreen(
     viewModel: RenderViewModel,
     playerViewModel: com.codestudio71.spoticious.player.PlayerViewModel
 ) {
+    val look = LocalSpoticiousLook.current
     val state by viewModel.state.collectAsState()
     val selectedUri by playerViewModel.selectedUri.collectAsState()
     val eqBandGains by playerViewModel.eqBandGains.collectAsState()
@@ -122,9 +115,10 @@ private fun IdleContent(
     onExportWav: () -> Unit,
     buttonsEnabled: Boolean = true
 ) {
+    val look = LocalSpoticiousLook.current
     Text(
         text = stringResource(R.string.export_with_eq),
-        color = Color.White,
+        color = look.textPrimary,
         fontSize = 20.sp,
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,
@@ -133,7 +127,7 @@ private fun IdleContent(
     Spacer(modifier = Modifier.height(8.dp))
     Text(
         text = if (selectedUri != null) stringResource(R.string.current_track_with_eq) else stringResource(R.string.select_track_in_tracks),
-        color = GrayText,
+        color = look.textMuted,
         fontSize = 14.sp,
         textAlign = TextAlign.Center,
         lineHeight = 20.sp,
@@ -143,7 +137,7 @@ private fun IdleContent(
     Button(
         onClick = onExportAac,
         enabled = selectedUri != null && buttonsEnabled,
-        colors = ButtonDefaults.buttonColors(containerColor = MiamiPink),
+        colors = ButtonDefaults.buttonColors(containerColor = look.accentAlt, contentColor = look.onAccent),
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(stringResource(R.string.export_as_aac))
@@ -152,7 +146,7 @@ private fun IdleContent(
     Button(
         onClick = onExportWav,
         enabled = selectedUri != null && buttonsEnabled,
-        colors = ButtonDefaults.buttonColors(containerColor = MiamiCyan),
+        colors = ButtonDefaults.buttonColors(containerColor = look.accent, contentColor = look.onAccent),
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(stringResource(R.string.export_as_wav))
@@ -167,12 +161,13 @@ private fun AacDialog(
     onDismiss: () -> Unit,
     onRender: (String, Int) -> Unit
 ) {
+    val look = LocalSpoticiousLook.current
     var customName by remember { mutableStateOf(defaultName) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = DialogBackground,
+        containerColor = look.dialogFill,
         title = {
-            Text(stringResource(R.string.file_name), color = Color.White, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.file_name), color = look.textPrimary, fontWeight = FontWeight.Bold)
         },
         text = {
             Column {
@@ -180,59 +175,59 @@ private fun AacDialog(
                     OutlinedTextField(
                         value = customName,
                         onValueChange = { customName = it },
-                        label = { Text(stringResource(R.string.name_label), color = GrayText) },
+                        label = { Text(stringResource(R.string.name_label), color = look.textMuted) },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedBorderColor = MiamiCyan,
-                            unfocusedBorderColor = GrayText,
-                            cursorColor = MiamiCyan,
-                            focusedLabelColor = MiamiCyan,
-                            unfocusedLabelColor = GrayText
+                            focusedTextColor = look.textPrimary,
+                            unfocusedTextColor = look.textPrimary,
+                            focusedBorderColor = look.accent,
+                            unfocusedBorderColor = look.textMuted,
+                            cursorColor = look.accent,
+                            focusedLabelColor = look.accent,
+                            unfocusedLabelColor = look.textMuted
                         ),
                         modifier = Modifier.weight(1f)
                     )
-                    Text(".m4a", color = GrayText, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp))
+                    Text(".m4a", color = look.textMuted, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp))
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(stringResource(R.string.sample_rate), color = Color.White, fontSize = 14.sp)
+                Text(stringResource(R.string.sample_rate), color = look.textPrimary, fontSize = 14.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(
                         selected = aacSampleRate == 0,
                         onClick = { onAacSampleRateChange(0) },
-                        colors = RadioButtonDefaults.colors(selectedColor = MiamiCyan)
+                        colors = RadioButtonDefaults.colors(selectedColor = look.accent)
                     )
-                    Text(stringResource(R.string.from_original), color = Color.White, fontSize = 14.sp)
+                    Text(stringResource(R.string.from_original), color = look.textPrimary, fontSize = 14.sp)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(
                         selected = aacSampleRate == 44100,
                         onClick = { onAacSampleRateChange(44100) },
-                        colors = RadioButtonDefaults.colors(selectedColor = MiamiCyan)
+                        colors = RadioButtonDefaults.colors(selectedColor = look.accent)
                     )
-                    Text(stringResource(R.string.hz_44_1), color = Color.White, fontSize = 14.sp)
+                    Text(stringResource(R.string.hz_44_1), color = look.textPrimary, fontSize = 14.sp)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(
                         selected = aacSampleRate == 48000,
                         onClick = { onAacSampleRateChange(48000) },
-                        colors = RadioButtonDefaults.colors(selectedColor = MiamiCyan)
+                        colors = RadioButtonDefaults.colors(selectedColor = look.accent)
                     )
-                    Text(stringResource(R.string.hz_48), color = Color.White, fontSize = 14.sp)
+                    Text(stringResource(R.string.hz_48), color = look.textPrimary, fontSize = 14.sp)
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = stringResource(R.string.format_aac),
                     style = MaterialTheme.typography.bodySmall,
-                    color = GrayText
+                    color = look.textMuted
                 )
             }
         },
         confirmButton = {
             Button(
                 onClick = { onRender(customName.ifBlank { defaultName }, aacSampleRate) },
-                colors = ButtonDefaults.buttonColors(containerColor = MiamiPink)
+                colors = ButtonDefaults.buttonColors(containerColor = look.accentAlt, contentColor = look.onAccent)
             ) {
                 Text(stringResource(R.string.render_button))
             }
@@ -240,8 +235,8 @@ private fun AacDialog(
         dismissButton = {
             OutlinedButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                border = BorderStroke(1.dp, Brush.linearGradient(listOf(Color.White, Color.White)))
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = look.textMuted),
+                border = BorderStroke(1.dp, look.textMuted)
             ) {
                 Text(stringResource(R.string.cancel))
             }
@@ -257,12 +252,13 @@ private fun WavDialog(
     onDismiss: () -> Unit,
     onRender: (String, Int) -> Unit
 ) {
+    val look = LocalSpoticiousLook.current
     var customName by remember { mutableStateOf(defaultName) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = DialogBackground,
+        containerColor = look.dialogFill,
         title = {
-            Text(stringResource(R.string.file_name), color = Color.White, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.file_name), color = look.textPrimary, fontWeight = FontWeight.Bold)
         },
         text = {
             Column {
@@ -270,51 +266,51 @@ private fun WavDialog(
                     OutlinedTextField(
                         value = customName,
                         onValueChange = { customName = it },
-                        label = { Text(stringResource(R.string.name_label), color = GrayText) },
+                        label = { Text(stringResource(R.string.name_label), color = look.textMuted) },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedBorderColor = MiamiCyan,
-                            unfocusedBorderColor = GrayText,
-                            cursorColor = MiamiCyan,
-                            focusedLabelColor = MiamiCyan,
-                            unfocusedLabelColor = GrayText
+                            focusedTextColor = look.textPrimary,
+                            unfocusedTextColor = look.textPrimary,
+                            focusedBorderColor = look.accent,
+                            unfocusedBorderColor = look.textMuted,
+                            cursorColor = look.accent,
+                            focusedLabelColor = look.accent,
+                            unfocusedLabelColor = look.textMuted
                         ),
                         modifier = Modifier.weight(1f)
                     )
-                    Text(".wav", color = GrayText, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp))
+                    Text(".wav", color = look.textMuted, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp))
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(stringResource(R.string.sample_rate), color = Color.White, fontSize = 14.sp)
+                Text(stringResource(R.string.sample_rate), color = look.textPrimary, fontSize = 14.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(
                         selected = sampleRate == 44100,
                         onClick = { onSampleRateChange(44100) },
-                        colors = RadioButtonDefaults.colors(selectedColor = MiamiCyan)
+                        colors = RadioButtonDefaults.colors(selectedColor = look.accent)
                     )
-                    Text(stringResource(R.string.hz_44100), color = Color.White, fontSize = 14.sp)
+                    Text(stringResource(R.string.hz_44100), color = look.textPrimary, fontSize = 14.sp)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(
                         selected = sampleRate == 48000,
                         onClick = { onSampleRateChange(48000) },
-                        colors = RadioButtonDefaults.colors(selectedColor = MiamiCyan)
+                        colors = RadioButtonDefaults.colors(selectedColor = look.accent)
                     )
-                    Text(stringResource(R.string.hz_48000), color = Color.White, fontSize = 14.sp)
+                    Text(stringResource(R.string.hz_48000), color = look.textPrimary, fontSize = 14.sp)
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = stringResource(R.string.format_wav),
                     style = MaterialTheme.typography.bodySmall,
-                    color = GrayText
+                    color = look.textMuted
                 )
             }
         },
         confirmButton = {
             Button(
                 onClick = { onRender(customName.ifBlank { defaultName }, sampleRate) },
-                colors = ButtonDefaults.buttonColors(containerColor = MiamiPink)
+                colors = ButtonDefaults.buttonColors(containerColor = look.accentAlt, contentColor = look.onAccent)
             ) {
                 Text(stringResource(R.string.render_button))
             }
@@ -322,8 +318,8 @@ private fun WavDialog(
         dismissButton = {
             OutlinedButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                border = BorderStroke(1.dp, Brush.linearGradient(listOf(Color.White, Color.White)))
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = look.textMuted),
+                border = BorderStroke(1.dp, look.textMuted)
             ) {
                 Text(stringResource(R.string.cancel))
             }
@@ -337,24 +333,25 @@ private fun RenderingContent(
     outputName: String,
     phase: String
 ) {
+    val look = LocalSpoticiousLook.current
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(stringResource(R.string.rendering), color = MiamiCyan, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.rendering), color = look.accent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(12.dp))
         LinearProgressIndicator(
             progress = { progress },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(8.dp),
-            color = MiamiCyan,
-            trackColor = Color.White.copy(alpha = 0.2f)
+            color = look.accent,
+            trackColor = look.inactiveTrack
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = "${(progress * 100).toInt()}% · $phase",
-            color = MiamiCyan,
+            color = look.accent,
             fontSize = 14.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
@@ -362,7 +359,7 @@ private fun RenderingContent(
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = outputName,
-            color = GrayText,
+            color = look.textMuted,
             fontSize = 12.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -372,7 +369,7 @@ private fun RenderingContent(
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.render_wait_large_files),
-            color = GrayText,
+            color = look.textMuted,
             fontSize = 12.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
@@ -386,24 +383,25 @@ private fun DoneContent(
     outputFormat: OutputFormat,
     onExportAnother: () -> Unit
 ) {
+    val look = LocalSpoticiousLook.current
     val ext = when (outputFormat) {
         OutputFormat.AAC -> ".m4a"
         OutputFormat.WAV -> ".wav"
     }
     Text(
         text = "✓",
-        color = MiamiCyan,
+        color = look.accent,
         fontSize = 48.sp,
         fontWeight = FontWeight.Bold
     )
     Spacer(modifier = Modifier.height(16.dp))
-    Text(stringResource(R.string.saved), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-    Text("$outputName$ext", color = MiamiCyan, fontSize = 14.sp)
-    Text(stringResource(R.string.music_rendered), color = GrayText, fontSize = 12.sp)
+    Text(stringResource(R.string.saved), color = look.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+    Text("$outputName$ext", color = look.accent, fontSize = 14.sp)
+    Text(stringResource(R.string.music_rendered), color = look.textMuted, fontSize = 12.sp)
     Spacer(modifier = Modifier.height(24.dp))
     Button(
         onClick = onExportAnother,
-        colors = ButtonDefaults.buttonColors(containerColor = MiamiPink),
+        colors = ButtonDefaults.buttonColors(containerColor = look.accentAlt, contentColor = look.onAccent),
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(stringResource(R.string.export_another))
@@ -415,6 +413,7 @@ private fun ErrorContent(
     message: String,
     onRetry: () -> Unit
 ) {
+    val look = LocalSpoticiousLook.current
     Text(
         text = "✗",
         color = Color.Red,
@@ -423,11 +422,11 @@ private fun ErrorContent(
     )
     Spacer(modifier = Modifier.height(16.dp))
     Text(stringResource(R.string.export_error), color = Color.Red, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-    Text(message, color = GrayText, fontSize = 12.sp)
+    Text(message, color = look.textMuted, fontSize = 12.sp)
     Spacer(modifier = Modifier.height(24.dp))
     Button(
         onClick = onRetry,
-        colors = ButtonDefaults.buttonColors(containerColor = MiamiPink),
+        colors = ButtonDefaults.buttonColors(containerColor = look.accentAlt, contentColor = look.onAccent),
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(stringResource(R.string.try_again))

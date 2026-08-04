@@ -15,6 +15,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.codestudio71.spoticious.ui.theme.LocalSpoticiousLook
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -33,6 +34,7 @@ fun DbfsMeter(
     peakDbfs: Float,
     modifier: Modifier = Modifier,
 ) {
+    val look = LocalSpoticiousLook.current
     val density = LocalDensity.current
     val clipped = currentDbfs.coerceIn(-60f, 0f)
     val label = String.format(Locale.US, "%.1f", clipped)
@@ -49,7 +51,7 @@ fun DbfsMeter(
                 if (currentDbfs > -1f) {
                     Color(0xFFFF1744)
                 } else {
-                    Color.White
+                    look.textPrimary
                 },
             fontFamily = FontFamily.Monospace,
             fontSize = 11.sp,
@@ -66,7 +68,7 @@ fun DbfsMeter(
             if (w <= 0f || h <= 0f) return@Canvas
 
             val radius = CornerRadius(minOf(10f, w / 4f), minOf(10f, w / 4f))
-            val track = Color(0xFF0D0818)
+            val track = look.panelFill
             drawRoundRect(color = track, size = Size(w, h), cornerRadius = radius)
 
             val frac = ((clipped + 60f) / 60f).coerceIn(0f, 1f)
@@ -84,7 +86,7 @@ fun DbfsMeter(
             val yPeak = (h - peakFrac * h).coerceIn(0f, h)
             val strokePx = with(density) { 2.dp.toPx() }
             drawLine(
-                color = Color.White.copy(alpha = 0.92f),
+                color = look.textPrimary.copy(alpha = 0.92f),
                 start = Offset(0f, yPeak),
                 end = Offset(w, yPeak),
                 strokeWidth = strokePx,

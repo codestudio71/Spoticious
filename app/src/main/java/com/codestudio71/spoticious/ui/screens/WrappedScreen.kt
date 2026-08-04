@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -41,8 +40,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.codestudio71.spoticious.R
 import com.codestudio71.spoticious.data.wrapped.WrappedPeriod
 import com.codestudio71.spoticious.ui.components.MiamiFrame
-import com.codestudio71.spoticious.ui.theme.MiamiCyan
+import com.codestudio71.spoticious.ui.theme.LocalSpoticiousLook
 import com.codestudio71.spoticious.ui.wrapped.WrappedViewModel
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WrappedScreen(
@@ -50,6 +50,7 @@ fun WrappedScreen(
     modifier: Modifier = Modifier,
     viewModel: WrappedViewModel = viewModel(),
 ) {
+    val look = LocalSpoticiousLook.current
     val period by viewModel.period.collectAsState()
     val topTracks by viewModel.topTracks.collectAsState()
     val topTracksByTime by viewModel.topTracksByTime.collectAsState()
@@ -74,7 +75,7 @@ fun WrappedScreen(
             title = {
                 Text(
                     stringResource(R.string.wrapped),
-                    color = Color.White,
+                    color = look.textPrimary,
                     fontWeight = FontWeight.Bold,
                 )
             },
@@ -83,7 +84,7 @@ fun WrappedScreen(
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(R.string.back),
-                        tint = Color.White,
+                        tint = look.textPrimary,
                     )
                 }
             },
@@ -146,12 +147,12 @@ fun WrappedScreen(
                             .height(200.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator(color = MiamiCyan)
+                    CircularProgressIndicator(color = look.accent)
                 }
             } else if (isEmpty) {
                 Text(
                     text = stringResource(R.string.wrapped_empty),
-                    color = Color.White.copy(alpha = 0.75f),
+                    color = look.textSecondary,
                     fontSize = 15.sp,
                     modifier = Modifier.padding(vertical = 32.dp),
                 )
@@ -209,6 +210,7 @@ private fun WrappedPeriodChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val look = LocalSpoticiousLook.current
     FilterChip(
         selected = selected,
         onClick = onClick,
@@ -224,15 +226,15 @@ private fun WrappedPeriodChip(
         colors =
             FilterChipDefaults.filterChipColors(
                 containerColor = Color.Transparent,
-                labelColor = Color.White,
-                selectedContainerColor = MiamiCyan,
-                selectedLabelColor = Color(0xFF0D0D1A),
+                labelColor = look.textPrimary,
+                selectedContainerColor = look.accent,
+                selectedLabelColor = look.onAccent,
             ),
         border =
             FilterChipDefaults.filterChipBorder(
                 enabled = true,
                 selected = selected,
-                borderColor = Color.White.copy(alpha = 0.35f),
+                borderColor = look.inactiveTrack,
                 selectedBorderColor = Color.Transparent,
                 borderWidth = 1.dp,
                 selectedBorderWidth = 0.dp,
@@ -246,10 +248,11 @@ private fun StatCard(
     value: String,
     modifier: Modifier = Modifier,
 ) {
+    val look = LocalSpoticiousLook.current
     MiamiFrame(modifier = modifier) {
-        Text(title, color = Color.White.copy(alpha = 0.65f), fontSize = 13.sp)
+        Text(title, color = look.textMuted, fontSize = 13.sp)
         Spacer(Modifier.height(8.dp))
-        Text(value, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text(value, color = look.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -258,10 +261,11 @@ private fun WrappedRankingSection(
     title: String,
     rows: List<Pair<String, String>>,
 ) {
+    val look = LocalSpoticiousLook.current
     if (rows.isEmpty()) return
     Text(
         title,
-        color = MiamiCyan,
+        color = look.accent,
         fontSize = 16.sp,
         fontWeight = FontWeight.Bold,
     )
@@ -282,6 +286,7 @@ private fun RankedRow(
     primary: String,
     secondary: String,
 ) {
+    val look = LocalSpoticiousLook.current
     MiamiFrame(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = 12.dp,
@@ -292,7 +297,7 @@ private fun RankedRow(
         ) {
             Text(
                 "$rank.",
-                color = MiamiCyan,
+                color = look.accent,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(end = 12.dp),
@@ -300,12 +305,12 @@ private fun RankedRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     primary,
-                    color = Color.White,
+                    color = look.textPrimary,
                     fontSize = 15.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(secondary, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+                Text(secondary, color = look.textMuted, fontSize = 12.sp)
             }
         }
     }

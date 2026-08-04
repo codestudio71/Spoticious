@@ -70,17 +70,10 @@ import com.codestudio71.spoticious.player.EqPresetImportOutcome
 import com.codestudio71.spoticious.player.EqPresetSaveOutcome
 import com.codestudio71.spoticious.player.EqualizerAudioProcessor
 import com.codestudio71.spoticious.player.PlayerViewModel
-import com.codestudio71.spoticious.ui.theme.EqBackground
-import com.codestudio71.spoticious.ui.theme.EqMiamiCyan
-import com.codestudio71.spoticious.ui.theme.EqMiamiPink
-import com.codestudio71.spoticious.ui.theme.MiamiDialogFill
+import com.codestudio71.spoticious.ui.theme.LocalSpoticiousLook
 import com.codestudio71.spoticious.ui.theme.MiamiMenuShape
-import com.codestudio71.spoticious.ui.theme.MiamiCyan
 import kotlin.OptIn
 import kotlinx.coroutines.launch
-
-/** Presety nad suwakami EQ — prawie pełne tło, żeby suwaki nie przeświecały. */
-private val EqPresetsMenuFill = Color(0xFF1A0A2E)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -95,6 +88,8 @@ fun EqScreen(
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val look = LocalSpoticiousLook.current
+    val eqPresetsMenuFill = look.menuFill
     val bandResetInteractionSources = remember {
         List(EqualizerAudioProcessor.BAND_FREQUENCIES_HZ.size) { MutableInteractionSource() }
     }
@@ -139,11 +134,11 @@ fun EqScreen(
     deleteCandidate?.let { name ->
         AlertDialog(
             onDismissRequest = { deleteCandidate = null },
-            title = { Text(stringResource(R.string.eq_preset_delete_title), color = Color.White) },
+            title = { Text(stringResource(R.string.eq_preset_delete_title), color = look.textPrimary) },
             text = {
                 Text(
                     stringResource(R.string.eq_preset_delete_message, name),
-                    color = Color.White.copy(alpha = 0.85f)
+                    color = look.textSecondary
                 )
             },
             confirmButton = {
@@ -155,26 +150,26 @@ fun EqScreen(
                         }
                     }
                 ) {
-                    Text(stringResource(R.string.eq_preset_delete_confirm), color = EqMiamiPink)
+                    Text(stringResource(R.string.eq_preset_delete_confirm), color = look.accentAlt)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { deleteCandidate = null }) {
-                    Text(stringResource(R.string.cancel), color = EqMiamiCyan)
+                    Text(stringResource(R.string.cancel), color = look.accent)
                 }
             },
-            containerColor = MiamiDialogFill
+            containerColor = look.dialogFill
         )
     }
 
     overwriteName?.let { pending ->
         AlertDialog(
             onDismissRequest = { overwriteName = null },
-            title = { Text(stringResource(R.string.eq_preset_overwrite_title), color = Color.White) },
+            title = { Text(stringResource(R.string.eq_preset_overwrite_title), color = look.textPrimary) },
             text = {
                 Text(
                     stringResource(R.string.eq_preset_overwrite_message),
-                    color = Color.White.copy(alpha = 0.85f)
+                    color = look.textSecondary
                 )
             },
             confirmButton = {
@@ -198,15 +193,15 @@ fun EqScreen(
                         }
                     }
                 ) {
-                    Text(stringResource(R.string.save), color = EqMiamiCyan)
+                    Text(stringResource(R.string.save), color = look.accent)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { overwriteName = null }) {
-                    Text(stringResource(R.string.cancel), color = Color.Gray)
+                    Text(stringResource(R.string.cancel), color = look.textMuted)
                 }
             },
-            containerColor = MiamiDialogFill
+            containerColor = look.dialogFill
         )
     }
 
@@ -217,12 +212,12 @@ fun EqScreen(
                 importConflictCount = 0
             },
             title = {
-                Text(stringResource(R.string.eq_preset_import_conflict_title), color = Color.White)
+                Text(stringResource(R.string.eq_preset_import_conflict_title), color = look.textPrimary)
             },
             text = {
                 Text(
                     stringResource(R.string.eq_preset_import_conflict_message, importConflictCount),
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = look.textSecondary,
                 )
             },
             confirmButton = {
@@ -241,7 +236,7 @@ fun EqScreen(
                         }
                     },
                 ) {
-                    Text(stringResource(R.string.eq_preset_import_overwrite), color = EqMiamiCyan)
+                    Text(stringResource(R.string.eq_preset_import_overwrite), color = look.accent)
                 }
             },
             dismissButton = {
@@ -261,7 +256,7 @@ fun EqScreen(
                             }
                         },
                     ) {
-                        Text(stringResource(R.string.eq_preset_import_skip), color = EqMiamiCyan)
+                        Text(stringResource(R.string.eq_preset_import_skip), color = look.accent)
                     }
                     TextButton(
                         onClick = {
@@ -269,11 +264,11 @@ fun EqScreen(
                             importConflictCount = 0
                         },
                     ) {
-                        Text(stringResource(R.string.cancel), color = Color.Gray)
+                        Text(stringResource(R.string.cancel), color = look.textMuted)
                     }
                 }
             },
-            containerColor = MiamiDialogFill,
+            containerColor = look.dialogFill,
         )
     }
 
@@ -292,16 +287,16 @@ fun EqScreen(
             ) {
                 Text(
                     text = stringResource(R.string.eq),
-                    color = Color.White,
+                    color = look.textPrimary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Box {
                     OutlinedButton(
                         onClick = { presetsMenuExpanded = true },
-                        border = BorderStroke(1.dp, EqMiamiCyan),
+                        border = BorderStroke(1.dp, look.accent),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = EqMiamiCyan,
+                            contentColor = look.accent,
                             containerColor = Color.Transparent,
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
@@ -326,8 +321,8 @@ fun EqScreen(
                                 .widthIn(min = 280.dp)
                                 .heightIn(max = 480.dp)
                                 .clip(MiamiMenuShape)
-                                .background(EqPresetsMenuFill, MiamiMenuShape)
-                                .border(1.dp, MiamiCyan.copy(alpha = 0.85f), MiamiMenuShape),
+                                .background(eqPresetsMenuFill, MiamiMenuShape)
+                                .border(1.dp, look.accent.copy(alpha = 0.85f), MiamiMenuShape),
                         containerColor = Color.Transparent,
                         tonalElevation = 0.dp,
                         shadowElevation = 8.dp,
@@ -349,15 +344,15 @@ fun EqScreen(
                                         label = {
                                             Text(
                                                 stringResource(R.string.eq_preset_name_hint),
-                                                color = Color.White.copy(alpha = 0.7f)
+                                                color = look.textSecondary
                                             )
                                         },
                                         colors = OutlinedTextFieldDefaults.colors(
-                                            focusedTextColor = Color.White,
-                                            unfocusedTextColor = Color.White,
-                                            focusedBorderColor = EqMiamiCyan,
-                                            unfocusedBorderColor = Color.Gray,
-                                            cursorColor = EqMiamiCyan
+                                            focusedTextColor = look.textPrimary,
+                                            unfocusedTextColor = look.textPrimary,
+                                            focusedBorderColor = look.accent,
+                                            unfocusedBorderColor = look.textMuted,
+                                            cursorColor = look.accent
                                         )
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -384,7 +379,7 @@ fun EqScreen(
                                     ) {
                                         Text(
                                             stringResource(R.string.eq_preset_save),
-                                            color = EqMiamiCyan,
+                                            color = look.accent,
                                             fontSize = 12.sp
                                         )
                                     }
@@ -403,18 +398,18 @@ fun EqScreen(
                                 ) {
                                     Text(
                                         stringResource(R.string.eq_preset_import),
-                                        color = EqMiamiCyan,
+                                        color = look.accent,
                                         fontSize = 12.sp,
                                     )
                                 }
                                 HorizontalDivider(
                                     modifier = Modifier.padding(vertical = 8.dp),
-                                    color = Color.White.copy(alpha = 0.15f)
+                                    color = look.textPrimary.copy(alpha = 0.15f)
                                 )
                                 if (presets.isEmpty()) {
                                     Text(
                                         text = stringResource(R.string.eq_preset_empty_hint),
-                                        color = Color.White.copy(alpha = 0.55f),
+                                        color = look.textMuted,
                                         fontSize = 12.sp,
                                         modifier = Modifier.padding(8.dp)
                                     )
@@ -450,7 +445,7 @@ fun EqScreen(
                                             ) {
                                                 Text(
                                                     text = "● ${preset.name}",
-                                                    color = Color.White,
+                                                    color = look.textPrimary,
                                                     fontSize = 14.sp,
                                                     modifier = Modifier.weight(1f),
                                                     maxLines = 1
@@ -459,7 +454,7 @@ fun EqScreen(
                                                     Icon(
                                                         imageVector = Icons.Default.Delete,
                                                         contentDescription = stringResource(R.string.eq_preset_delete_title),
-                                                        tint = EqMiamiPink.copy(alpha = 0.85f)
+                                                        tint = look.accentAlt.copy(alpha = 0.85f)
                                                     )
                                                 }
                                             }
@@ -472,7 +467,7 @@ fun EqScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = if (eqEnabled) stringResource(R.string.eq_on) else stringResource(R.string.eq_off),
-                        color = if (eqEnabled) EqMiamiCyan else Color.Gray,
+                        color = if (eqEnabled) look.accent else look.textMuted,
                         fontSize = 12.sp
                     )
                     Spacer(modifier = Modifier.width(6.dp))
@@ -480,10 +475,10 @@ fun EqScreen(
                         checked = eqEnabled,
                         onCheckedChange = { viewModel.setEqEnabled(it) },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = EqBackground,
-                            checkedTrackColor = EqMiamiCyan,
-                            uncheckedThumbColor = Color.Gray,
-                            uncheckedTrackColor = Color.DarkGray
+                            checkedThumbColor = look.onAccent,
+                            checkedTrackColor = look.accent,
+                            uncheckedThumbColor = look.textMuted,
+                            uncheckedTrackColor = look.inactiveTrack,
                         )
                     )
                 }
@@ -503,7 +498,7 @@ fun EqScreen(
             ) {
                 Text(
                     text = stringResource(R.string.eq_pre),
-                    color = EqMiamiPink,
+                    color = look.accentAlt,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.width(48.dp)
@@ -515,9 +510,9 @@ fun EqScreen(
                     valueRange = -15f..15f,
                     modifier = Modifier.weight(1f),
                     colors = SliderDefaults.colors(
-                        thumbColor = Color(0xFFFF4DB8),
-                        activeTrackColor = Color(0xFFFF4444),
-                        inactiveTrackColor = Color(0xFF662222)
+                        thumbColor = look.accentAlt,
+                        activeTrackColor = look.accentAlt,
+                        inactiveTrackColor = look.inactiveTrack,
                     ),
                     thumb = {
                         Box(
@@ -526,19 +521,19 @@ fun EqScreen(
                                 .shadow(
                                     elevation = 4.dp,
                                     shape = CircleShape,
-                                    ambientColor = Color(0xFFFF4DB8),
-                                    spotColor = Color(0xFFFF4DB8)
+                                    ambientColor = look.accentAlt,
+                                    spotColor = look.accentAlt,
                                 )
                                 .background(
-                                    color = Color(0xFFFF4DB8),
-                                    shape = CircleShape
+                                    color = look.accentAlt,
+                                    shape = CircleShape,
                                 )
                         )
                     }
                 )
                 Text(
                     text = formatDb(preampDb),
-                    color = Color.White,
+                    color = look.textPrimary,
                     fontSize = 11.sp,
                     modifier = Modifier.width(52.dp)
                 )
@@ -553,7 +548,7 @@ fun EqScreen(
                 ) {
                     Text(
                         text = formatFreq(freqHz),
-                        color = Color.White.copy(alpha = 0.8f),
+                        color = look.textSecondary,
                         fontSize = 10.sp,
                         modifier = Modifier.width(48.dp)
                     )
@@ -564,9 +559,9 @@ fun EqScreen(
                         valueRange = 0f..1f,
                         modifier = Modifier.weight(1f),
                         colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFFFF4DB8),
-                            activeTrackColor = Color(0xFF00E5FF),
-                            inactiveTrackColor = Color(0xFF333333)
+                            thumbColor = look.accentAlt,
+                            activeTrackColor = look.accent,
+                            inactiveTrackColor = look.inactiveTrack,
                         ),
                         thumb = {
                             Box(
@@ -575,12 +570,12 @@ fun EqScreen(
                                     .shadow(
                                         elevation = 4.dp,
                                         shape = CircleShape,
-                                        ambientColor = Color(0xFFFF4DB8),
-                                        spotColor = Color(0xFFFF4DB8)
+                                        ambientColor = look.accentAlt,
+                                        spotColor = look.accentAlt,
                                     )
                                     .background(
-                                        color = Color(0xFFFF4DB8),
-                                        shape = CircleShape
+                                        color = look.accentAlt,
+                                        shape = CircleShape,
                                     )
                             )
                         }
@@ -602,7 +597,7 @@ fun EqScreen(
                     ) {
                         Text(
                             text = formatDb(bandGains.getOrElse(index) { 0f }),
-                            color = Color.White,
+                            color = look.textPrimary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.widthIn(min = 48.dp)
@@ -618,7 +613,7 @@ fun EqScreen(
             ) {
                 Text(
                     text = stringResource(R.string.eq_reset),
-                    color = EqMiamiCyan,
+                    color = look.accent,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )

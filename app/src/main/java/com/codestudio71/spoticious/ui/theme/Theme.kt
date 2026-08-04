@@ -1,65 +1,65 @@
 package com.codestudio71.spoticious.ui.theme
 
-import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-
-private val DarkColorScheme = darkColorScheme(
-    primary = NeonCyan,
-    secondary = NeonMagenta,
-    tertiary = NeonGreen,
-    background = NeonBackground,
-    surface = NeonSurface,
-    onPrimary = NeonBackground,
-    onSecondary = NeonBackground,
-    onTertiary = NeonBackground,
-    onBackground = Color.White,
-    onSurface = Color.White
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
-)
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 @Composable
 fun SpoticiousTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false,
-    content: @Composable () -> Unit
+    lookId: SpoticiousLookId = SpoticiousLookId.MIAMI,
+    content: @Composable () -> Unit,
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val look = SpoticiousLooks.byId(lookId)
+    val colorScheme =
+        if (look.isLight) {
+            lightColorScheme(
+                primary = look.accent,
+                secondary = look.accentAlt,
+                tertiary = look.accent,
+                background = look.gradientColors.first(),
+                surface = look.panelFill,
+                onPrimary = look.onAccent,
+                onSecondary = look.onAccent,
+                onTertiary = look.onAccent,
+                onBackground = look.textPrimary,
+                onSurface = look.textPrimary,
+            )
+        } else {
+            darkColorScheme(
+                primary = look.accent,
+                secondary = look.accentAlt,
+                tertiary = look.accentAlt,
+                background = look.gradientColors.first(),
+                surface = look.panelFill,
+                onPrimary = look.onAccent,
+                onSecondary = look.onAccent,
+                onTertiary = look.onAccent,
+                onBackground = look.textPrimary,
+                onSurface = look.textPrimary,
+            )
         }
-        darkTheme -> DarkColorScheme
-        else -> DarkColorScheme
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val activity = view.context as? android.app.Activity ?: return@SideEffect
+            @Suppress("DEPRECATION")
+            activity.window.navigationBarColor = look.navigationBarArgb
+            WindowCompat.getInsetsController(activity.window, view).isAppearanceLightStatusBars = look.isLight
+            WindowCompat.getInsetsController(activity.window, view).isAppearanceLightNavigationBars = look.isLight
+        }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    CompositionLocalProvider(LocalSpoticiousLook provides look) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content,
+        )
+    }
 }

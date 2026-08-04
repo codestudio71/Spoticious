@@ -82,13 +82,11 @@ import com.codestudio71.spoticious.audio.record.RecordViewModel
 import com.codestudio71.spoticious.audio.record.RecordingState
 import com.codestudio71.spoticious.ui.components.MiamiFrame
 import com.codestudio71.spoticious.ui.components.WaveformWithMeter
-import com.codestudio71.spoticious.ui.theme.MiamiDialogFill
+import com.codestudio71.spoticious.ui.theme.LocalSpoticiousLook
 import com.codestudio71.spoticious.ui.theme.miamiMenuSurface
 import java.util.Locale
 
-private val CyanUi = Color(0xFF00BCD4)
 private val RecRed = Color(0xFFFF1744)
-private val DarkOnCyan = Color(0xFF0D0D1A)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,6 +94,7 @@ fun RecordPreviewScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val look = LocalSpoticiousLook.current
     val viewModel: RecordViewModel = viewModel()
     val context = LocalContext.current
 
@@ -240,11 +239,11 @@ fun RecordPreviewScreen(
             modifier = Modifier.padding(top = 8.dp),
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White)
+                Icon(Icons.Default.ArrowBack, contentDescription = null, tint = look.textPrimary)
             }
             Text(
                 stringResource(R.string.record_preview_title),
-                color = Color.White,
+                color = look.textPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -266,15 +265,15 @@ fun RecordPreviewScreen(
                 colors =
                     FilterChipDefaults.filterChipColors(
                         containerColor = Color.Transparent,
-                        labelColor = Color.White,
-                        selectedContainerColor = CyanUi,
-                        selectedLabelColor = DarkOnCyan,
+                        labelColor = look.textPrimary,
+                        selectedContainerColor = look.accent,
+                        selectedLabelColor = look.onAccent,
                     ),
                 border =
                     FilterChipDefaults.filterChipBorder(
                         enabled = true,
                         selected = isFreestyle,
-                        borderColor = Color.Gray,
+                        borderColor = look.textMuted,
                         selectedBorderColor = Color.Transparent,
                         borderWidth = 1.dp,
                         selectedBorderWidth = 0.dp,
@@ -290,15 +289,15 @@ fun RecordPreviewScreen(
                 colors =
                     FilterChipDefaults.filterChipColors(
                         containerColor = Color.Transparent,
-                        labelColor = Color.White,
-                        selectedContainerColor = CyanUi,
-                        selectedLabelColor = DarkOnCyan,
+                        labelColor = look.textPrimary,
+                        selectedContainerColor = look.accent,
+                        selectedLabelColor = look.onAccent,
                     ),
                 border =
                     FilterChipDefaults.filterChipBorder(
                         enabled = true,
                         selected = !isFreestyle,
-                        borderColor = Color.Gray,
+                        borderColor = look.textMuted,
                         selectedBorderColor = Color.Transparent,
                         borderWidth = 1.dp,
                         selectedBorderWidth = 0.dp,
@@ -317,18 +316,18 @@ fun RecordPreviewScreen(
                 Icon(
                     Icons.Default.Mic,
                     contentDescription = null,
-                    tint = CyanUi,
+                    tint = look.accent,
                     modifier = Modifier.padding(end = 8.dp),
                 )
                 Text(
                     stringResource(R.string.record_input_mic),
-                    color = Color.White,
+                    color = look.textPrimary,
                     fontWeight = FontWeight.Medium,
                 )
             }
             Text(
                 selectedDeviceName,
-                color = Color.White.copy(alpha = 0.6f),
+                color = look.textMuted,
                 fontSize = 14.sp,
                 modifier = Modifier.padding(top = 8.dp),
             )
@@ -337,9 +336,9 @@ fun RecordPreviewScreen(
                 OutlinedButton(
                     onClick = { deviceMenu = true },
                     modifier = Modifier.fillMaxWidth(),
-                    border = BorderStroke(1.dp, CyanUi),
+                    border = BorderStroke(1.dp, look.accent),
                     colors =
-                        ButtonDefaults.outlinedButtonColors(contentColor = CyanUi),
+                        ButtonDefaults.outlinedButtonColors(contentColor = look.accent),
                 ) {
                     Text(stringResource(R.string.record_choose_input))
                 }
@@ -353,7 +352,7 @@ fun RecordPreviewScreen(
                 ) {
                     inputDevices.forEach { opt ->
                         DropdownMenuItem(
-                            text = { Text(opt.label, color = Color.White) },
+                            text = { Text(opt.label, color = look.textPrimary) },
                             onClick = {
                                 viewModel.setSelectedDevice(opt.info.id)
                                 deviceMenu = false
@@ -376,18 +375,18 @@ fun RecordPreviewScreen(
                     Icon(
                         outputIcon,
                         contentDescription = null,
-                        tint = CyanUi,
+                        tint = look.accent,
                         modifier = Modifier.padding(end = 8.dp),
                     )
                     Text(
                         stringResource(R.string.record_output_beat),
-                        color = Color.White,
+                        color = look.textPrimary,
                         fontWeight = FontWeight.Medium,
                     )
                 }
                 Text(
                     selectedOutputName,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = look.textMuted,
                     fontSize = 14.sp,
                     modifier = Modifier.padding(top = 8.dp),
                 )
@@ -396,9 +395,9 @@ fun RecordPreviewScreen(
                     OutlinedButton(
                         onClick = { outputDeviceMenu = true },
                         modifier = Modifier.fillMaxWidth(),
-                        border = BorderStroke(1.dp, CyanUi),
+                        border = BorderStroke(1.dp, look.accent),
                         colors =
-                            ButtonDefaults.outlinedButtonColors(contentColor = CyanUi),
+                            ButtonDefaults.outlinedButtonColors(contentColor = look.accent),
                     ) {
                         Text(stringResource(R.string.record_choose_output))
                     }
@@ -417,10 +416,10 @@ fun RecordPreviewScreen(
                                         Icon(
                                             beatOutputIcon(opt.info.type),
                                             contentDescription = null,
-                                            tint = CyanUi,
+                                            tint = look.accent,
                                             modifier = Modifier.padding(end = 8.dp),
                                         )
-                                        Text(opt.label, color = Color.White)
+                                        Text(opt.label, color = look.textPrimary)
                                     }
                                 },
                                 onClick = {
@@ -445,7 +444,7 @@ fun RecordPreviewScreen(
                     ) {
                         Text(
                             beatName ?: "—",
-                            color = Color.White,
+                            color = look.textPrimary,
                             modifier = Modifier.weight(1f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -458,7 +457,7 @@ fun RecordPreviewScreen(
                             Icon(
                                 Icons.Default.Close,
                                 contentDescription = stringResource(R.string.close),
-                                tint = CyanUi,
+                                tint = look.accent,
                             )
                         }
                     }
@@ -468,7 +467,7 @@ fun RecordPreviewScreen(
                     ) {
                         Text(
                             stringResource(R.string.record_beat_volume),
-                            color = Color.White,
+                            color = look.textPrimary,
                             fontSize = 10.sp,
                             modifier = Modifier.width(72.dp),
                         )
@@ -490,9 +489,9 @@ fun RecordPreviewScreen(
                             enabled = !isBusy,
                             colors =
                                 SliderDefaults.colors(
-                                    thumbColor = Color(0xFFFF4DB8),
-                                    activeTrackColor = Color(0xFF00E5FF),
-                                    inactiveTrackColor = Color(0xFF333333),
+                                    thumbColor = look.accentAlt,
+                                    activeTrackColor = look.accent,
+                                    inactiveTrackColor = look.inactiveTrack,
                                 ),
                             thumb = {
                                 Box(
@@ -502,11 +501,11 @@ fun RecordPreviewScreen(
                                             .shadow(
                                                 elevation = 4.dp,
                                                 shape = CircleShape,
-                                                ambientColor = Color(0xFFFF4DB8),
-                                                spotColor = Color(0xFFFF4DB8),
+                                                ambientColor = look.accentAlt,
+                                                spotColor = look.accentAlt,
                                             )
                                             .background(
-                                                color = Color(0xFFFF4DB8),
+                                                color = look.accentAlt,
                                                 shape = CircleShape,
                                             ),
                                 )
@@ -514,7 +513,7 @@ fun RecordPreviewScreen(
                         )
                         Text(
                             "${((if (beatGainDragging) beatGainDraft else beatGain) * 100).roundToInt()}%",
-                            color = Color.White,
+                            color = look.textPrimary,
                             fontSize = 11.sp,
                             modifier = Modifier.width(40.dp),
                         )
@@ -551,7 +550,7 @@ fun RecordPreviewScreen(
                                             Icons.Default.PlayArrow
                                         },
                                     contentDescription = stringResource(R.string.record_beat_preview),
-                                    tint = CyanUi,
+                                    tint = look.accent,
                                 )
                             }
                             Slider(
@@ -574,16 +573,16 @@ fun RecordPreviewScreen(
                                 enabled = beatDurMs > 0L,
                                 colors =
                                     SliderDefaults.colors(
-                                        thumbColor = CyanUi,
-                                        activeTrackColor = CyanUi,
-                                        inactiveTrackColor = Color.White.copy(alpha = 0.3f),
+                                        thumbColor = look.accent,
+                                        activeTrackColor = look.accent,
+                                        inactiveTrackColor = look.inactiveTrack,
                                     ),
                             )
                             Text(
                                 text =
                                     "${formatRecordTime(if (beatSeekDragging) beatSeekDraft.toLong() else beatPosMs)} / " +
                                         formatRecordTime(beatDurMs),
-                                color = Color.White.copy(alpha = 0.85f),
+                                color = look.textSecondary,
                                 fontSize = 11.sp,
                                 maxLines = 1,
                             )
@@ -597,8 +596,8 @@ fun RecordPreviewScreen(
                     shape = RoundedCornerShape(28.dp),
                     colors =
                         ButtonDefaults.buttonColors(
-                            containerColor = CyanUi,
-                            contentColor = Color.Black,
+                            containerColor = look.accent,
+                            contentColor = look.onAccent,
                         ),
                 ) {
                     Text(stringResource(R.string.record_add_beat), fontWeight = FontWeight.Bold)
@@ -626,7 +625,7 @@ fun RecordPreviewScreen(
                 if (beatDurMs > 0L) {
                     Text(
                         text = "BEAT  ${formatRecordTime(beatPosMs)} / ${formatRecordTime(beatDurMs)}",
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = look.textMuted,
                         fontSize = 12.sp,
                         modifier =
                             Modifier
@@ -653,22 +652,22 @@ fun RecordPreviewScreen(
                     placeholder = {
                         Text(
                             stringResource(R.string.record_name_placeholder),
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = look.textMuted,
                         )
                     },
                     colors =
                         OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            cursorColor = CyanUi,
-                            focusedBorderColor = CyanUi,
-                            unfocusedBorderColor = CyanUi,
+                            focusedTextColor = look.textPrimary,
+                            unfocusedTextColor = look.textPrimary,
+                            cursorColor = look.accent,
+                            focusedBorderColor = look.accent,
+                            unfocusedBorderColor = look.accent,
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
-                            focusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
-                            unfocusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
-                            focusedLabelColor = CyanUi,
-                            unfocusedLabelColor = CyanUi,
+                            focusedPlaceholderColor = look.textMuted,
+                            unfocusedPlaceholderColor = look.textMuted,
+                            focusedLabelColor = look.accent,
+                            unfocusedLabelColor = look.accent,
                         ),
                     shape = RoundedCornerShape(8.dp),
                 )
@@ -694,7 +693,7 @@ fun RecordPreviewScreen(
                                         Icons.Default.PlayArrow
                                     },
                                 contentDescription = null,
-                                tint = CyanUi,
+                                tint = look.accent,
                             )
                         }
                         Slider(
@@ -716,16 +715,16 @@ fun RecordPreviewScreen(
                             valueRange = 0f..durMax,
                             colors =
                                 SliderDefaults.colors(
-                                    thumbColor = CyanUi,
-                                    activeTrackColor = CyanUi,
-                                    inactiveTrackColor = Color.White.copy(alpha = 0.3f),
+                                    thumbColor = look.accent,
+                                    activeTrackColor = look.accent,
+                                    inactiveTrackColor = look.inactiveTrack,
                                 ),
                         )
                         Text(
                             text =
                                 "${formatRecordTime(if (sliderDragging) sliderDraft.toLong() else savedTakePosMs)} / " +
                                     formatRecordTime(savedTakeDurMs),
-                            color = Color.White,
+                            color = look.textPrimary,
                             fontSize = 12.sp,
                             maxLines = 1,
                         )
@@ -744,8 +743,8 @@ fun RecordPreviewScreen(
                         enabled = !mixInProgress,
                         colors =
                             ButtonDefaults.buttonColors(
-                                containerColor = CyanUi,
-                                contentColor = DarkOnCyan,
+                                containerColor = look.accent,
+                                contentColor = look.onAccent,
                             ),
                         shape = RoundedCornerShape(24.dp),
                     ) {
@@ -788,7 +787,7 @@ fun RecordPreviewScreen(
                 }
                 Text(
                     text = formattedDuration,
-                    color = if (isRecording) RecRed else CyanUi,
+                    color = if (isRecording) RecRed else look.accent,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -802,13 +801,13 @@ fun RecordPreviewScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 CircularProgressIndicator(
-                    color = CyanUi,
+                    color = look.accent,
                     strokeWidth = 2.dp,
                     modifier = Modifier.size(18.dp),
                 )
                 Text(
                     text = stringResource(R.string.record_mixing),
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = look.textSecondary,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(start = 8.dp),
                 )
@@ -845,9 +844,9 @@ fun RecordPreviewScreen(
     if (headsetDialog) {
         AlertDialog(
             onDismissRequest = { headsetDialog = false },
-            title = { Text(stringResource(R.string.record_headset_title), color = Color.White) },
+            title = { Text(stringResource(R.string.record_headset_title), color = look.textPrimary) },
             text = {
-                Text(stringResource(R.string.record_headset_body), color = Color.White.copy(alpha = 0.9f))
+                Text(stringResource(R.string.record_headset_body), color = look.textSecondary)
             },
             confirmButton = {
                 TextButton(
@@ -857,15 +856,15 @@ fun RecordPreviewScreen(
                         viewModel.confirmStartRecording()
                     },
                 ) {
-                    Text(stringResource(R.string.record_headset_continue), color = CyanUi)
+                    Text(stringResource(R.string.record_headset_continue), color = look.accent)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { headsetDialog = false }) {
-                    Text(stringResource(R.string.cancel), color = Color.Gray)
+                    Text(stringResource(R.string.cancel), color = look.textMuted)
                 }
             },
-            containerColor = MiamiDialogFill,
+            containerColor = look.dialogFill,
         )
     }
 
@@ -879,7 +878,7 @@ fun RecordPreviewScreen(
             text = {
                 Text(
                     stringResource(R.string.record_delete_confirm, displayName),
-                    color = Color.White,
+                    color = look.textPrimary,
                 )
             },
             confirmButton = {
@@ -894,10 +893,10 @@ fun RecordPreviewScreen(
             },
             dismissButton = {
                 TextButton(onClick = { deleteDialog = false }) {
-                    Text(stringResource(R.string.cancel), color = Color.Gray)
+                    Text(stringResource(R.string.cancel), color = look.textMuted)
                 }
             },
-            containerColor = MiamiDialogFill,
+            containerColor = look.dialogFill,
         )
     }
 }

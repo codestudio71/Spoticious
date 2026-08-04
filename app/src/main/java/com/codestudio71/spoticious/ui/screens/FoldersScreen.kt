@@ -6,7 +6,6 @@ import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
@@ -39,9 +38,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -56,22 +52,11 @@ import com.codestudio71.spoticious.folders.FoldersViewModel
 import com.codestudio71.spoticious.folders.TrackSortOrder
 import com.codestudio71.spoticious.player.PlayerViewModel
 import com.codestudio71.spoticious.ui.components.MiamiFrame
-import com.codestudio71.spoticious.ui.theme.MiamiCyan
-import com.codestudio71.spoticious.ui.theme.MiamiGradientColors
-import com.codestudio71.spoticious.ui.theme.MiamiPink
+import com.codestudio71.spoticious.ui.theme.LocalSpoticiousLook
+import com.codestudio71.spoticious.ui.theme.appListSelectedRow
 
 /** Zaokrąglenie jak MiamiFrame (16dp), bez ramki — tylko delikatne podświetlenie wiersza. */
 private val FolderFileRowShape = RoundedCornerShape(12.dp)
-
-/** Rozjaśniony odcień z palety gradientu — subtelny, nie cyan block. */
-private val FolderFileSelectedBrush =
-    Brush.verticalGradient(
-        colors =
-            listOf(
-                MiamiGradientColors[1].copy(alpha = 0.72f),
-                MiamiGradientColors[2].copy(alpha = 0.58f),
-            ),
-    )
 
 @Composable
 fun FoldersScreen(
@@ -81,6 +66,7 @@ fun FoldersScreen(
     searchQuery: String = "",
     sortMode: TrackSortOrder = TrackSortOrder.NAME_ASC
 ) {
+    val look = LocalSpoticiousLook.current
     val context = LocalContext.current
     val folders by foldersViewModel.folders.collectAsState()
     val filteredFolders = remember(folders, searchQuery) {
@@ -122,13 +108,16 @@ fun FoldersScreen(
         ) {
             Text(
                 text = stringResource(R.string.music_access_folders),
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+                color = look.textSecondary,
                 fontSize = 16.sp
             )
             Spacer(modifier = Modifier.height(24.dp))
             androidx.compose.material3.Button(
                 onClick = { permissionLauncher.launch(audioPermission) },
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MiamiCyan)
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = look.accent,
+                    contentColor = look.onAccent,
+                )
             ) {
                 Text(stringResource(R.string.share_access))
             }
@@ -151,7 +140,7 @@ fun FoldersScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = MiamiCyan)
+                    CircularProgressIndicator(color = look.accent)
                 }
             }
             error != null -> {
@@ -169,7 +158,10 @@ fun FoldersScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     androidx.compose.material3.Button(
                         onClick = { foldersViewModel.loadAudioFilesIfPermitted() },
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MiamiPink)
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = look.accentAlt,
+                            contentColor = look.onAccent,
+                        )
                     ) {
                         Text(stringResource(R.string.try_again))
                     }
@@ -185,12 +177,15 @@ fun FoldersScreen(
                 ) {
                     Text(
                         text = stringResource(R.string.no_audio_files),
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        color = look.textMuted,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     androidx.compose.material3.Button(
                         onClick = { foldersViewModel.loadAudioFilesIfPermitted() },
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MiamiCyan)
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = look.accent,
+                            contentColor = look.onAccent,
+                        )
                     ) {
                         Text(stringResource(R.string.refresh))
                     }
@@ -254,6 +249,7 @@ private fun FolderSection(
     onFileClick: (AudioFile) -> Unit,
     isFileSelected: (Uri) -> Boolean,
 ) {
+    val look = LocalSpoticiousLook.current
     MiamiFrame(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = 0.dp,
@@ -269,26 +265,26 @@ private fun FolderSection(
             Icon(
                 imageVector = Icons.Default.Folder,
                 contentDescription = null,
-                tint = MiamiCyan,
+                tint = look.accent,
                 modifier = Modifier.size(28.dp)
             )
             Spacer(modifier = Modifier.size(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = folder.folderName,
-                    color = Color.White,
+                    color = look.textPrimary,
                     fontSize = 16.sp
                 )
                 Text(
                     text = stringResource(R.string.tracks_in_folder, folder.files.size),
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = look.textMuted,
                     fontSize = 12.sp
                 )
             }
             Icon(
                 imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                 contentDescription = null,
-                tint = MiamiPink
+                tint = look.accentAlt
             )
         }
 
@@ -300,21 +296,14 @@ private fun FolderSection(
                         Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 10.dp, vertical = 3.dp)
-                            .clip(FolderFileRowShape)
-                            .then(
-                                if (filePlaying) {
-                                    Modifier.background(FolderFileSelectedBrush, FolderFileRowShape)
-                                } else {
-                                    Modifier
-                                },
-                            )
+                            .appListSelectedRow(selected = filePlaying, shape = FolderFileRowShape)
                             .clickable { onFileClick(file) }
                             .padding(vertical = 11.dp, horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = file.displayName,
-                        color = Color.White,
+                        color = look.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = if (filePlaying) FontWeight.SemiBold else FontWeight.Normal,
                         maxLines = 1,
@@ -325,8 +314,8 @@ private fun FolderSection(
                         Text(
                             text = formatFolderDuration(file.durationMs),
                             color =
-                                if (filePlaying) Color.White.copy(alpha = 0.9f)
-                                else Color.White.copy(alpha = 0.65f),
+                                if (filePlaying) look.textSecondary
+                                else look.textMuted,
                             fontSize = 13.sp,
                             modifier = Modifier.padding(start = 12.dp),
                         )

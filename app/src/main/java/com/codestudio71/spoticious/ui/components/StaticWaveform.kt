@@ -34,22 +34,8 @@ import androidx.compose.ui.unit.sp
 import com.codestudio71.spoticious.R
 import com.codestudio71.spoticious.audio.cut.WaveformPeaks
 import com.codestudio71.spoticious.audio.record.FrameResult
+import com.codestudio71.spoticious.ui.theme.LocalSpoticiousLook
 import kotlin.math.abs
-
-private val WaveGradient =
-    Brush.verticalGradient(
-        colors =
-            listOf(
-                Color(0xFF00E5FF),
-                Color(0xFFFF006E),
-            ),
-    )
-
-private val WaveCardBg = Color(0xFF1A1030)
-private val WaveBorderColor = Color(0xFF00BCD4).copy(alpha = 0.3f)
-private val WaveLabelColor = Color(0xFF00E5FF)
-private val PinkMarker = Color(0xFFFF006E)
-private val CyanMarker = Color(0xFF00E5FF)
 
 private enum class CutHandle {
     From,
@@ -67,6 +53,13 @@ fun StaticWaveform(
     /** Playhead tylko podczas podglądu Od–Do; null = ukryty. */
     playheadMs: Long? = null,
 ) {
+    val look = LocalSpoticiousLook.current
+    val waveGradient =
+        Brush.verticalGradient(listOf(look.accent, look.accentAlt))
+    val waveCardBg = look.panelFill
+    val waveBorder = look.accent.copy(alpha = 0.35f)
+    val fromMarker = look.accent
+    val toMarker = look.accentAlt
     val durationMs = peaks.durationMs.coerceAtLeast(1L)
     val frames = remember(peaks) { peaksToFrames(peaks) }
     val density = LocalDensity.current
@@ -80,17 +73,17 @@ fun StaticWaveform(
         modifier =
             modifier
                 .fillMaxWidth()
-                .background(color = WaveCardBg, shape = RoundedCornerShape(12.dp))
-                .border(width = 1.dp, color = WaveBorderColor, shape = RoundedCornerShape(12.dp))
+                .background(color = waveCardBg, shape = RoundedCornerShape(12.dp))
+                .border(width = 1.dp, color = waveBorder, shape = RoundedCornerShape(12.dp))
                 .padding(horizontal = 8.dp, vertical = 6.dp),
     ) {
         Text(
             text = stringResource(R.string.audio_cut_waveform),
-            color = WaveLabelColor,
+            color = look.accent,
             fontSize = 10.sp,
             fontWeight = FontWeight.SemiBold,
         )
-        Spacer(modifier.height(4.dp))
+        Spacer(Modifier.height(4.dp))
 
         var activeHandle by remember { mutableStateOf<CutHandle?>(null) }
 
@@ -164,7 +157,7 @@ fun StaticWaveform(
         ) {
             RealTimeWaveform(
                 frames = frames,
-                waveColor = WaveGradient,
+                waveColor = waveGradient,
                 modifier = Modifier.fillMaxSize(),
             )
             WaveformMarkersOverlay(
@@ -173,20 +166,23 @@ fun StaticWaveform(
                 toMs = toMs,
                 playheadMs = playheadMs,
                 activeHandle = activeHandle,
+                fromColor = fromMarker,
+                toColor = toMarker,
+                playheadColor = look.textPrimary,
                 modifier = Modifier.fillMaxSize(),
             )
         }
 
         Text(
             text = stringResource(R.string.audio_cut_waveform_hint),
-            color = Color.White.copy(alpha = 0.55f),
+            color = look.textMuted,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(top = 6.dp, start = 2.dp),
         )
         Text(
             text = "${formatStepperTime(0)} — ${formatStepperTime(durationMs)}",
-            color = Color.White.copy(alpha = 0.4f),
+            color = look.textMuted,
             fontSize = 10.sp,
             modifier = Modifier.padding(top = 2.dp, start = 2.dp),
         )
@@ -200,6 +196,9 @@ private fun WaveformMarkersOverlay(
     toMs: Long,
     playheadMs: Long?,
     activeHandle: CutHandle?,
+    fromColor: Color,
+    toColor: Color,
+    playheadColor: Color,
     modifier: Modifier = Modifier,
 ) {
     Canvas(modifier = modifier) {
@@ -211,7 +210,7 @@ private fun WaveformMarkersOverlay(
         val handleH = 12.dp.toPx()
 
         drawRect(
-            color = CyanMarker.copy(alpha = 0.14f),
+            color = fromColor.copy(alpha = 0.14f),
             topLeft = Offset(fromX.coerceIn(0f, w), 0f),
             size =
                 androidx.compose.ui.geometry.Size(
@@ -242,14 +241,14 @@ private fun WaveformMarkersOverlay(
             drawPath(path, color)
         }
 
-        drawHandle(fromX, CyanMarker, activeHandle == CutHandle.From)
-        drawHandle(toX, PinkMarker, activeHandle == CutHandle.To)
+        drawHandle(fromX, fromColor, activeHandle == CutHandle.From)
+        drawHandle(toX, toColor, activeHandle == CutHandle.To)
 
         val head = playheadMs
         if (head != null && durationMs > 0L) {
             val posX = (head.toFloat() / durationMs) * w
             drawLine(
-                color = Color.White.copy(alpha = 0.9f),
+                color = playheadColor.copy(alpha = 0.9f),
                 start = Offset(posX.coerceIn(0f, w), 0f),
                 end = Offset(posX.coerceIn(0f, w), h),
                 strokeWidth = 1.5.dp.toPx(),

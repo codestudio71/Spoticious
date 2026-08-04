@@ -25,6 +25,24 @@
 
     <!-- ExtraScreen -->
     <string name="extra_title">Extra</string>
+    <string name="new_look">Zmień Styl</string>
+    <string name="new_look_subtitle">Skórki — Miami domyślnie, reszta beta</string>
+    <string name="new_look_title">Zmień Styl</string>
+    <string name="new_look_hint">Dotknij wyglądu, żeby zastosować od razu. Miami to domyślny; inne to beta.</string>
+    <string name="look_miami_title">Miami</string>
+    <string name="look_miami_subtitle">Klasyczny Spoticious 2.0</string>
+    <string name="look_miami2_title">Miami 2.0</string>
+    <string name="look_miami2_subtitle">Bogatszy neon — beta</string>
+    <string name="look_spotify_title">Spotify</string>
+    <string name="look_spotify_subtitle">Zieleń i czerń — beta</string>
+    <string name="look_crypto_title">Future Crypto</string>
+    <string name="look_crypto_subtitle">Neon glass swag — beta</string>
+    <string name="look_sun_title">Sun</string>
+    <string name="look_sun_subtitle">Żółć · biel · niebo — beta</string>
+    <string name="look_clear_title">Clear Simple</string>
+    <string name="look_clear_subtitle">Biel i czerń — beta</string>
+    <string name="look_beta_badge">BETA</string>
+    <string name="look_active">Aktywny</string>
     <string name="wrapped">Wrapped</string>
     <string name="wrapped_subtitle">Statystyki słuchania</string>
     <string name="wrapped_period_week">Ostatni tydzień</string>
@@ -172,6 +190,7 @@
     <string name="master_data_title">Master Data</string>
     <string name="master_data_analyzing">Analizuję utwór…</string>
     <string name="master_data_no_data">Brak danych</string>
+    <string name="master_data_analyze_failed">Nie udało się przeanalizować utworu</string>
     <string name="master_data_track_too_long">Utwór za długi — Master Data dostępne tylko dla singli (do 10 min)</string>
     <string name="master_data_header_peak">Peak</string>
     <string name="master_data_header_clips">Clips</string>

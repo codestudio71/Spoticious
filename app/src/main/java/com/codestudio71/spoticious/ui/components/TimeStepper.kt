@@ -49,16 +49,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.codestudio71.spoticious.R
-import com.codestudio71.spoticious.ui.theme.MiamiCyan
-import com.codestudio71.spoticious.ui.theme.MiamiDialogFill
-import com.codestudio71.spoticious.ui.theme.MiamiPink
+import com.codestudio71.spoticious.ui.theme.LocalSpoticiousLook
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.max
-
-private val TimeDialogBackground = MiamiDialogFill
-private val TimeDialogGray = Color(0xFFB0B0B0)
 
 private val StepperButtonSize = 30.dp
 private val StepperIconSize = 18.dp
@@ -128,9 +123,11 @@ fun TimeStepper(
     onNudge: (Long) -> Unit,
     onSetUnit: (TimeStepUnit, Int) -> Unit,
     modifier: Modifier = Modifier,
-    accent: Color = MiamiCyan,
+    accent: Color? = null,
     showHours: Boolean = true,
 ) {
+    val look = LocalSpoticiousLook.current
+    val resolvedAccent = accent ?: look.accent
     val breakdown = remember(timeMs) { TimeBreakdown.fromMs(timeMs) }
     var editUnit by remember { mutableStateOf<TimeStepUnit?>(null) }
 
@@ -145,7 +142,7 @@ fun TimeStepper(
         TimeUnitEditDialog(
             unit = unit,
             initialValue = currentValue,
-            accent = accent,
+            accent = resolvedAccent,
             onDismiss = { editUnit = null },
             onConfirm = { value ->
                 onSetUnit(unit, value)
@@ -162,13 +159,13 @@ fun TimeStepper(
         ) {
             Text(
                 label,
-                color = Color.White,
+                color = look.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
             )
             Text(
                 formatStepperTimeHms(timeMs),
-                color = accent.copy(alpha = 0.85f),
+                color = resolvedAccent.copy(alpha = 0.85f),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 fontFamily = FontFamily.Monospace,
@@ -186,35 +183,35 @@ fun TimeStepper(
                 TimeUnitStepper(
                     unitLabel = "h",
                     display = breakdown.hours.toString().padStart(2, '0'),
-                    accent = accent,
+                    accent = resolvedAccent,
                     valueWidth = StepperValueWidth,
                     onDelta = { sign -> onNudge(sign * TimeStepUnit.HOURS.deltaMs) },
                     onDoubleTap = { editUnit = TimeStepUnit.HOURS },
                 )
-                TimeStepSeparator(":", accent)
+                TimeStepSeparator(":", resolvedAccent)
             }
             TimeUnitStepper(
                 unitLabel = "m",
                 display = breakdown.minutes.toString().padStart(2, '0'),
-                accent = accent,
+                accent = resolvedAccent,
                 valueWidth = StepperValueWidth,
                 onDelta = { sign -> onNudge(sign * TimeStepUnit.MINUTES.deltaMs) },
                 onDoubleTap = { editUnit = TimeStepUnit.MINUTES },
             )
-            TimeStepSeparator(":", accent)
+            TimeStepSeparator(":", resolvedAccent)
             TimeUnitStepper(
                 unitLabel = "s",
                 display = breakdown.seconds.toString().padStart(2, '0'),
-                accent = accent,
+                accent = resolvedAccent,
                 valueWidth = StepperValueWidth,
                 onDelta = { sign -> onNudge(sign * TimeStepUnit.SECONDS.deltaMs) },
                 onDoubleTap = { editUnit = TimeStepUnit.SECONDS },
             )
-            TimeStepSeparator(".", accent)
+            TimeStepSeparator(".", resolvedAccent)
             TimeUnitStepper(
                 unitLabel = "ms",
                 display = breakdown.millis.toString().padStart(3, '0'),
-                accent = accent,
+                accent = resolvedAccent,
                 valueWidth = StepperMsValueWidth,
                 unitWidth = StepperMsUnitWidth,
                 onDelta = { sign -> onNudge(sign * TimeStepUnit.MILLIS.deltaMs) },
@@ -258,6 +255,7 @@ private fun TimeUnitStepper(
     valueWidth: Dp,
     unitWidth: Dp = StepperUnitWidth,
 ) {
+    val look = LocalSpoticiousLook.current
     val haptic = LocalHapticFeedback.current
     Column(
         modifier = Modifier.width(unitWidth),
@@ -265,7 +263,7 @@ private fun TimeUnitStepper(
     ) {
         Text(
             unitLabel,
-            color = Color.White.copy(alpha = 0.45f),
+            color = look.textMuted,
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
             letterSpacing = 0.5.sp,
@@ -319,6 +317,7 @@ private fun TimeUnitEditDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit,
 ) {
+    val look = LocalSpoticiousLook.current
     val maxDigits =
         when (unit) {
             TimeStepUnit.HOURS -> 2
@@ -341,11 +340,11 @@ private fun TimeUnitEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = TimeDialogBackground,
+        containerColor = look.dialogFill,
         title = {
             Text(
                 stringResource(R.string.audio_cut_edit_unit_title, unitLabel),
-                color = Color.White,
+                color = look.textPrimary,
                 fontWeight = FontWeight.Bold,
             )
         },
@@ -357,20 +356,20 @@ private fun TimeUnitEditDialog(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 textStyle =
                     androidx.compose.ui.text.TextStyle(
-                        color = Color.White,
+                        color = look.textPrimary,
                         fontFamily = FontFamily.Monospace,
                         textAlign = TextAlign.Center,
                         fontSize = 18.sp,
                     ),
                 colors =
                     OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
+                        focusedTextColor = look.textPrimary,
+                        unfocusedTextColor = look.textPrimary,
                         focusedBorderColor = accent,
-                        unfocusedBorderColor = TimeDialogGray,
+                        unfocusedBorderColor = look.textMuted,
                         cursorColor = accent,
                         focusedLabelColor = accent,
-                        unfocusedLabelColor = TimeDialogGray,
+                        unfocusedLabelColor = look.textMuted,
                     ),
                 modifier =
                     Modifier
@@ -390,7 +389,7 @@ private fun TimeUnitEditDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel), color = MiamiPink)
+                Text(stringResource(R.string.cancel), color = look.accentAlt)
             }
         },
     )

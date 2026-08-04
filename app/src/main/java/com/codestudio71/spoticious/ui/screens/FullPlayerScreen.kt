@@ -83,10 +83,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import com.codestudio71.spoticious.ui.components.MiamiFrame
-import com.codestudio71.spoticious.ui.theme.MiamiCyan
-import com.codestudio71.spoticious.ui.theme.MiamiDialogFill
-import com.codestudio71.spoticious.ui.theme.MiamiPanelFill
-import com.codestudio71.spoticious.ui.theme.MiamiPink
+import com.codestudio71.spoticious.ui.theme.LocalSpoticiousLook
+import com.codestudio71.spoticious.ui.theme.appVerticalGradient
 import com.google.android.exoplayer2.Player
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -116,6 +114,7 @@ fun FullPlayerScreen(
     var glossaryDialog by remember { mutableStateOf(false) }
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     val sleepTimerRemaining by viewModel.sleepTimerRemainingMinutes.collectAsState()
+    val look = LocalSpoticiousLook.current
 
     if (showSleepTimerDialog) {
         SleepTimerDialog(
@@ -135,11 +134,11 @@ fun FullPlayerScreen(
     if (glossaryDialog) {
         AlertDialog(
             onDismissRequest = { glossaryDialog = false },
-            containerColor = MiamiDialogFill,
+            containerColor = look.dialogFill,
             title = {
                 Text(
                     text = stringResource(R.string.master_data_title),
-                    color = MiamiCyan,
+                    color = look.accent,
                     fontWeight = FontWeight.Bold,
                 )
             },
@@ -160,7 +159,7 @@ fun FullPlayerScreen(
             },
             confirmButton = {
                 TextButton(onClick = { glossaryDialog = false }) {
-                    Text("OK", color = MiamiCyan)
+                    Text("OK", color = look.accent)
                 }
             },
         )
@@ -169,14 +168,7 @@ fun FullPlayerScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF003344),
-                        Color(0xFF2D0050)
-                    )
-                )
-            )
+            .background(appVerticalGradient())
     ) {
         Column(
             modifier = Modifier
@@ -192,7 +184,7 @@ fun FullPlayerScreen(
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
                     contentDescription = stringResource(R.string.close),
-                    tint = Color.White,
+                    tint = look.textPrimary,
                     modifier = Modifier.size(36.dp)
                 )
             }
@@ -204,7 +196,7 @@ fun FullPlayerScreen(
                     .size(200.dp)
                     .background(
                         Brush.linearGradient(
-                            colors = listOf(MiamiCyan.copy(alpha = 0.3f), MiamiPink.copy(alpha = 0.3f))
+                            colors = listOf(look.accent.copy(alpha = 0.3f), look.accentAlt.copy(alpha = 0.3f))
                         ),
                         shape = RoundedCornerShape(16.dp)
                     ),
@@ -213,7 +205,7 @@ fun FullPlayerScreen(
                 Icon(
                     imageVector = Icons.Default.MusicNote,
                     contentDescription = null,
-                    tint = MiamiCyan.copy(alpha = 0.8f),
+                    tint = look.accent.copy(alpha = 0.8f),
                     modifier = Modifier.size(96.dp)
                 )
             }
@@ -222,7 +214,7 @@ fun FullPlayerScreen(
 
             Text(
                 text = fileName ?: stringResource(R.string.track_default),
-                color = Color.White,
+                color = look.textPrimary,
                 fontSize = 22.sp,
                 maxLines = 2,
                 textAlign = TextAlign.Center,
@@ -263,12 +255,12 @@ fun FullPlayerScreen(
             ) {
                 Text(
                     text = formatTime(currentPosition),
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = look.textSecondary,
                     fontSize = 12.sp
                 )
                 Text(
                     text = formatTime(duration),
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = look.textSecondary,
                     fontSize = 12.sp
                 )
             }
@@ -292,7 +284,7 @@ fun FullPlayerScreen(
                     Icon(
                         imageVector = Icons.Default.Shuffle,
                         contentDescription = stringResource(R.string.shuffle),
-                        tint = if (shuffleEnabled) MiamiPink else Color.White.copy(alpha = 0.6f),
+                        tint = if (shuffleEnabled) look.accentAlt else look.textMuted,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -304,7 +296,7 @@ fun FullPlayerScreen(
                     Icon(
                         imageVector = Icons.Default.SkipPrevious,
                         contentDescription = stringResource(R.string.previous),
-                        tint = Color.White,
+                        tint = look.textPrimary,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -316,7 +308,7 @@ fun FullPlayerScreen(
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = if (isPlaying) stringResource(R.string.pause) else stringResource(R.string.play),
-                        tint = MiamiPink,
+                        tint = look.accentAlt,
                         modifier = Modifier.size(64.dp)
                     )
                 }
@@ -328,7 +320,7 @@ fun FullPlayerScreen(
                     Icon(
                         imageVector = Icons.Default.SkipNext,
                         contentDescription = stringResource(R.string.next),
-                        tint = Color.White,
+                        tint = look.textPrimary,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -351,9 +343,9 @@ fun FullPlayerScreen(
                         },
                         contentDescription = stringResource(repeatCd),
                         tint = when (repeatMode) {
-                            Player.REPEAT_MODE_OFF -> Color.White.copy(alpha = 0.4f)
-                            Player.REPEAT_MODE_ALL, Player.REPEAT_MODE_ONE -> MiamiCyan
-                            else -> Color.White.copy(alpha = 0.4f)
+                            Player.REPEAT_MODE_OFF -> look.textMuted
+                            Player.REPEAT_MODE_ALL, Player.REPEAT_MODE_ONE -> look.accent
+                            else -> look.textMuted
                         },
                         modifier = Modifier.size(32.dp)
                     )
@@ -373,13 +365,13 @@ fun FullPlayerScreen(
                         Icon(
                             imageVector = Icons.Filled.Timer,
                             contentDescription = stringResource(R.string.sleep_timer),
-                            tint = if (sleepTimerRemaining != null) MiamiCyan else Color.White.copy(alpha = 0.6f),
+                            tint = if (sleepTimerRemaining != null) look.accent else look.textMuted,
                             modifier = Modifier.size(24.dp)
                         )
                         if (sleepTimerRemaining != null) {
                             Text(
                                 text = stringResource(R.string.min_compact, sleepTimerRemaining!!),
-                                color = MiamiCyan,
+                                color = look.accent,
                                 fontSize = 9.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Visible,
@@ -409,13 +401,13 @@ fun FullPlayerScreen(
                     ) {
                         Text(
                             text = stringResource(R.string.full_player_section_extra),
-                            color = MiamiCyan,
+                            color = look.accent,
                             fontSize = 14.sp,
                             fontFamily = FontFamily.Monospace
                         )
                         Text(
                             text = if (extraExpanded) "▲" else "▼",
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = look.textMuted,
                             fontSize = 10.sp
                         )
                     }
@@ -428,7 +420,7 @@ fun FullPlayerScreen(
                         ) {
                             Text(
                                 text = metadata?.let { buildMetadataText(it) } ?: "—",
-                                color = Color.White,
+                                color = look.textPrimary,
                                 fontSize = 13.sp,
                                 fontFamily = FontFamily.Monospace
                             )
@@ -456,7 +448,7 @@ fun FullPlayerScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = stringResource(R.string.master_data_title),
-                                color = MiamiCyan,
+                                color = look.accent,
                                 fontSize = 14.sp,
                                 fontFamily = FontFamily.Monospace
                             )
@@ -467,7 +459,7 @@ fun FullPlayerScreen(
                                 Icon(
                                     imageVector = Icons.Outlined.Info,
                                     contentDescription = stringResource(R.string.master_data_glossary_title),
-                                    tint = MiamiCyan,
+                                    tint = look.accent,
                                     modifier = Modifier.size(16.dp),
                                 )
                             }
@@ -475,7 +467,7 @@ fun FullPlayerScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = if (masterDataEnabled) stringResource(R.string.eq_on) else stringResource(R.string.eq_off),
-                                color = if (masterDataEnabled) MiamiCyan else Color.Gray,
+                                color = if (masterDataEnabled) look.accent else look.textMuted,
                                 fontSize = 12.sp
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -488,10 +480,10 @@ fun FullPlayerScreen(
                                     }
                                 },
                                 colors = SwitchDefaults.colors(
-                                    checkedThumbColor = MiamiPanelFill,
-                                    checkedTrackColor = MiamiCyan,
-                                    uncheckedThumbColor = Color.Gray,
-                                    uncheckedTrackColor = Color.DarkGray
+                                    checkedThumbColor = look.onAccent,
+                                    checkedTrackColor = look.accent,
+                                    uncheckedThumbColor = look.textMuted,
+                                    uncheckedTrackColor = look.inactiveTrack
                                 )
                             )
                         }
@@ -506,28 +498,42 @@ fun FullPlayerScreen(
                             ) {
                                 Text(
                                     text = stringResource(R.string.master_data_analyzing),
-                                    color = Color.White.copy(alpha = 0.6f),
+                                    color = look.textMuted,
                                     fontSize = 13.sp
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 LinearProgressIndicator(
                                     progress = { masterDataProgress.coerceIn(0f, 1f) },
                                     modifier = Modifier.fillMaxWidth(),
-                                    color = MiamiCyan,
-                                    trackColor = Color.White.copy(alpha = 0.2f)
+                                    color = look.accent,
+                                    trackColor = look.inactiveTrack
                                 )
                             }
                         } else {
                             masterData?.let { md ->
                                 MasterDataTable(md = md)
                             } ?: run {
-                                Text(
-                                    text = masterDataError ?: stringResource(R.string.master_data_no_data),
-                                    color = Color.White.copy(alpha = 0.4f),
-                                    fontSize = 13.sp,
+                                Column(
                                     modifier = Modifier.fillMaxWidth(),
-                                    textAlign = TextAlign.Center
-                                )
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = masterDataError
+                                            ?: stringResource(R.string.master_data_no_data),
+                                        color = look.textMuted,
+                                        fontSize = 13.sp,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    if (masterDataError != null) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        TextButton(onClick = { viewModel.loadMasterData() }) {
+                                            Text(
+                                                text = stringResource(R.string.try_again),
+                                                color = look.accent
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -545,20 +551,18 @@ private fun SleepTimerDialog(
     onDisable: () -> Unit
 ) {
     var customMinutes by remember { mutableStateOf("") }
-    val gradientBrush = Brush.linearGradient(
-        colors = listOf(Color(0xFF003344), Color(0xFF2D0050))
-    )
+    val look = LocalSpoticiousLook.current
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(gradientBrush, RoundedCornerShape(16.dp))
+                .background(look.verticalGradient(), RoundedCornerShape(16.dp))
                 .padding(24.dp)
         ) {
             Text(
                 text = stringResource(R.string.sleep_timer),
-                color = MiamiCyan,
+                color = look.accent,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
@@ -574,7 +578,7 @@ private fun SleepTimerDialog(
                 ) {
                     Text(
                         text = stringResource(R.string.min_remaining, mins),
-                        color = Color.White,
+                        color = look.textPrimary,
                         fontSize = 16.sp
                     )
                 }
@@ -588,7 +592,7 @@ private fun SleepTimerDialog(
                 label = {
                     Text(
                         text = stringResource(R.string.custom_minutes),
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = look.textSecondary,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
                     )
@@ -596,17 +600,17 @@ private fun SleepTimerDialog(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = Color.White,
+                    color = look.textPrimary,
                     textAlign = TextAlign.Center
                 ),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedBorderColor = MiamiCyan,
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
-                    cursorColor = MiamiCyan,
-                    focusedLabelColor = MiamiCyan,
-                    unfocusedLabelColor = Color.White.copy(alpha = 0.7f)
+                    focusedTextColor = look.textPrimary,
+                    unfocusedTextColor = look.textPrimary,
+                    focusedBorderColor = look.accent,
+                    unfocusedBorderColor = look.textMuted,
+                    cursorColor = look.accent,
+                    focusedLabelColor = look.accent,
+                    unfocusedLabelColor = look.textSecondary
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -619,7 +623,7 @@ private fun SleepTimerDialog(
                 ) {
                     Text(
                         text = stringResource(R.string.disable),
-                        color = MiamiPink,
+                        color = look.accentAlt,
                         fontSize = 14.sp
                     )
                 }
@@ -632,13 +636,13 @@ private fun SleepTimerDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.cancel), color = Color.White.copy(alpha = 0.8f))
+                    Text(stringResource(R.string.cancel), color = look.textSecondary)
                 }
                 TextButton(onClick = {
                     val m = customMinutes.toIntOrNull()?.coerceIn(1, 600)
                     if (m != null) onSetTimer(m)
                 }) {
-                    Text(stringResource(R.string.save), color = MiamiCyan)
+                    Text(stringResource(R.string.save), color = look.accent)
                 }
             }
         }
@@ -647,6 +651,7 @@ private fun SleepTimerDialog(
 
 @Composable
 private fun MasterDataTable(md: com.codestudio71.spoticious.player.MasterData) {
+    val look = LocalSpoticiousLook.current
     val headers = listOf(
         stringResource(R.string.master_data_header_peak),
         stringResource(R.string.master_data_header_clips),
@@ -667,21 +672,21 @@ private fun MasterDataTable(md: com.codestudio71.spoticious.player.MasterData) {
     fun peakColor(peakDb: Double) = when {
         peakDb >= 0.0 -> Color(0xFFE53935)
         peakDb >= -3.0 -> Color(0xFFFF9800)
-        else -> Color.White
+        else -> look.textPrimary
     }
 
     fun clipsColor(clips: Int, reliable: Boolean) =
-        if (!reliable) Color.White else if (clips > 0) Color(0xFFE53935) else Color.White
+        if (!reliable) look.textPrimary else if (clips > 0) Color(0xFFE53935) else look.textPrimary
 
-    fun lufsIColor(lufsI: Double) = if (lufsI in -16.0..-9.0) Color(0xFF4CAF50) else Color.White
+    fun lufsIColor(lufsI: Double) = if (lufsI in -16.0..-9.0) Color(0xFF4CAF50) else look.textPrimary
 
-    fun lraColor(lra: Double) = if (lra < 3.0) Color(0xFFFF9800) else Color.White
+    fun lraColor(lra: Double) = if (lra < 3.0) Color(0xFFFF9800) else look.textPrimary
 
     val valueColors = listOf(
         peakColor(md.peakDb),
         clipsColor(md.clips, md.clipsReliable),
-        Color.White,
-        Color.White,
+        look.textPrimary,
+        look.textPrimary,
         lufsIColor(md.lufsI),
         lraColor(md.lra)
     )
@@ -702,7 +707,7 @@ private fun MasterDataTable(md: com.codestudio71.spoticious.player.MasterData) {
             headers.forEach { h ->
                 Text(
                     text = h,
-                    color = MiamiCyan,
+                    color = look.accent,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
@@ -714,7 +719,7 @@ private fun MasterDataTable(md: com.codestudio71.spoticious.player.MasterData) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp)
-                .background(MiamiCyan.copy(alpha = 0.25f))
+                .background(look.accent.copy(alpha = 0.25f))
         )
         Row(
             modifier = Modifier
@@ -736,7 +741,7 @@ private fun MasterDataTable(md: com.codestudio71.spoticious.player.MasterData) {
         if (!md.clipsReliable) {
             Text(
                 text = stringResource(R.string.master_data_clips_unavailable),
-                color = Color.Gray,
+                color = look.textMuted,
                 fontSize = 11.sp,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -754,6 +759,7 @@ private fun CustomSeekBar(
     isPlaying: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val look = LocalSpoticiousLook.current
     val progressCoerced = progress.coerceIn(0f, 1f)
     var dragProgress by remember { mutableStateOf<Float?>(null) }
     val displayedProgress = dragProgress ?: progressCoerced
@@ -818,31 +824,30 @@ private fun CustomSeekBar(
                     .fillMaxWidth()
                     .height(trackHeight)
                     .align(Alignment.Center)
-                    .background(MiamiCyan.copy(alpha = 0.3f), RoundedCornerShape(2.dp))
+                    .background(look.inactiveTrack.copy(alpha = 0.45f), RoundedCornerShape(2.dp))
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(displayedProgress)
                         .height(trackHeight)
                         .align(Alignment.CenterStart)
-                        .background(MiamiCyan, RoundedCornerShape(2.dp))
+                        .background(look.seekBrush(), RoundedCornerShape(2.dp))
                 )
             }
             val thumbSize = 52.dp
             val thumbRadius = thumbSize / 2
             val thumbCenter = (width * displayedProgress).coerceIn(0.dp, width)
+            val glowColor = look.accentAlt
             Icon(
                 imageVector = if (isPlaying) Icons.Default.PlayArrow else Icons.Default.Pause,
                 contentDescription = null,
-                tint = MiamiPink,
+                tint = look.accentAlt,
                 modifier = Modifier
                     .size(52.dp)
                     .align(Alignment.CenterStart)
                     .offset(x = thumbCenter - thumbRadius)
                     .drawBehind {
                         val center = Offset(size.width / 2f, size.height / 2f)
-                        val glowColor = Color(0xFFFF4DB8)
-                        // neon glow — warstwy symulują blur
                         drawCircle(glowColor.copy(alpha = 0.15f), radius = size.minDimension / 2.2f + 12.dp.toPx(), center = center)
                         drawCircle(glowColor.copy(alpha = 0.25f), radius = size.minDimension / 2.2f + 6.dp.toPx(), center = center)
                         drawCircle(glowColor.copy(alpha = 0.4f), radius = size.minDimension / 2.2f, center = center)
@@ -854,24 +859,25 @@ private fun CustomSeekBar(
 
 @Composable
 private fun MasterDataGlossaryEntry(text: String) {
+    val look = LocalSpoticiousLook.current
     val separator = " — "
     val splitIndex = text.indexOf(separator)
     if (splitIndex >= 0) {
         Text(
             text = text.substring(0, splitIndex),
-            color = MiamiCyan,
+            color = look.accent,
             fontWeight = FontWeight.Bold,
             fontSize = 13.sp,
         )
         Text(
             text = text.substring(splitIndex + separator.length),
-            color = Color.White.copy(alpha = 0.85f),
+            color = look.textSecondary,
             fontSize = 13.sp,
         )
     } else {
         Text(
             text = text,
-            color = Color.White.copy(alpha = 0.85f),
+            color = look.textSecondary,
             fontSize = 13.sp,
         )
     }

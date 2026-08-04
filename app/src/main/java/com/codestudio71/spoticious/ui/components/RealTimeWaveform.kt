@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import com.codestudio71.spoticious.ui.theme.LocalSpoticiousLook
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.platform.LocalDensity
@@ -54,6 +55,7 @@ fun RealTimeWaveform(
     modifier: Modifier = Modifier,
     waveColor: Brush,
 ) {
+    val look = LocalSpoticiousLook.current
     val density = LocalDensity.current
     val zeroThicknessPx =
         remember(density) {
@@ -78,7 +80,7 @@ fun RealTimeWaveform(
         val verticalPadPx = max(8f, h * 0.06f)
         val halfAmpl = (cy - verticalPadPx).coerceAtLeast(8f)
 
-        val lineColor = Color.White.copy(alpha = 0.15f)
+        val lineColor = look.textMuted.copy(alpha = 0.35f)
         drawLine(
             color = lineColor,
             start = Offset(0f, cy),
